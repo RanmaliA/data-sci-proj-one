@@ -1,6 +1,6 @@
 ---
 title: "Group Project"
-author: "Ranmali Attapattu"
+author: "Ranmali Attapattu, Raiyan Raza"
 date: "2026-07-25"
 output: html_document
 ---
@@ -239,7 +239,7 @@ kable(demo_cat_summary, caption = "Frequency Distributions for Demographic Categ
 
 ## Descriptive Statistics for Sleep Measures and Quality of Life
 
-### Continuous Sleep and HRQoL Measures
+### Continuous Sleep and QoL Measures
 Summary statistics for the continuous sleep instruments (`PSQI`, `ESS`, `AIS`, `BSS`) and QoL scores (`SF36_PCS` and `SF36_MCS`). The mean Pittsburgh Sleep Quality Index (PSQI) is 7.38, which is above the poor sleep quality threshold of 4. The mean Epworth Sleepiness Scale (ESS)	is 7.76, which is below the sleep disturbance threshold of 10. The mean Athens Insomnia Scale (AIS) is 7.41, which is above the insomnia threshold of 5. The mean SF-36 Physical Component Summary (PCS)	is 43.05 and the mean SF-36 Mental Component Summary is 46.22. 
 
 ```{r summary-sleep-qol-cont, echo=FALSE, warning = FALSE}
