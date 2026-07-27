@@ -41,7 +41,7 @@ project_data <- project_data %>%
   )
 
 ```
-Summary statistics indicate that participants ranged in age from 18 to 80 years (mean = 52.78 years), with an average BMI of 27.02 kg/m² among those with recorded values. The average time since transplant was 6.49 years, ranging from 0.08 to 23.02 years. Overall, the dataset appears well suited for analysis, although variables with substantial missing data will require careful handling before conducting statistical analyses.
+Initial summary statistics indicate that participants ranged in age from 18 to 80 years (mean = 52.78 years), with an average BMI of 27.02 kg/m² among those with recorded values. The average time since transplant was 6.49 years, ranging from 0.08 to 23.02 years. Overall, the dataset appears well suited for analysis, although variables with substantial missing data will require careful handling before conducting statistical analyses.
 
 ## Cleaning
 Given the large number of variables in the original dataset, only variables relevant to the research questions were retained. Variable labels and coding were recoded according to the data dictionary.
@@ -138,7 +138,7 @@ kable(sleep_data[1:5,], caption = "First five observations of the analysis subse
 ```
 
 ### Recoding Sleep Disturbance Variables
-In order to accommodate multiple analysis angles, sleep disturbance was stored using both the **continuous** questionnaire scores and the clinically meaningful **binary** classifications. Continuous scores were retained to assess the severity of sleep symptoms and their relationship with health-related quality of life. Binary sleep disturbance variables use descriptive factor levels to facilitate interpretation and support prevalence estimation and logistic regression analyses. In the original dataset, the binary variable Poor.sleep.quality does not match the data dictionary criteria for the Pittsburgh Sleep Quality Index (it should be greater than 4 indicating poor sleep quality). To account for this and any other errors, this section re-codes the binary sleep quality variables using the correct criteria.
+In order to accommodate multiple analysis angles, sleep disturbance was stored using both the **continuous** questionnaire scores and the derived, clinically meaningful **binary** classifications. Continuous scores were retained to assess the severity of sleep symptoms and their relationship with health-related quality of life. Binary sleep disturbance variables were created with descriptive factor levels to facilitate interpretation, and support prevalence estimation & logistic regression analyses. In the original dataset, the binary variable Poor.sleep.quality does not match the data dictionary criteria for the Pittsburgh Sleep Quality Index (it should be greater than 4 indicating poor sleep quality). To account for this and any other potential errors, this section re-codes the binary sleep quality variables using the correct criteria.
 ```{r binary-vars, echo=FALSE}
 
 # Recalculate binary sleep quality variables directly from continuous measures using data dictionary cutoffs
@@ -183,6 +183,7 @@ predictor_data <- sleep_data %>%
           corticosteroid)
 ```
 
+## Summary Statistics
 ### Demographic and Clinical Characteristics
 
 Continuous demographic and clinical variables are summarized using mean, standard deviation (SD), median, minimum, maximum, and missing values. The mean participant age is 52.78 years. The mean BMI is 27.02 kg/m^2. The mean time since liver transplant is 6.49 years.

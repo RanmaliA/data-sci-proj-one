@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Ranmali Attapattu" />
+<meta name="author" content="Ranmali Attapattu, Raiyan Raza" />
 
 <meta name="date" content="2026-07-25" />
 
@@ -351,7 +351,7 @@ display: none;
 
 
 <h1 class="title toc-ignore">Group Project</h1>
-<h4 class="author">Ranmali Attapattu</h4>
+<h4 class="author">Ranmali Attapattu, Raiyan Raza</h4>
 <h4 class="date">2026-07-25</h4>
 
 </div>
@@ -617,17 +617,17 @@ renamed for clarity.</caption>
 <h3>Recoding Sleep Disturbance Variables</h3>
 <p>In order to accommodate multiple analysis angles, sleep disturbance
 was stored using both the <strong>continuous</strong> questionnaire
-scores and the clinically meaningful <strong>binary</strong>
+scores and the derived, clinically meaningful <strong>binary</strong>
 classifications. Continuous scores were retained to assess the severity
 of sleep symptoms and their relationship with health-related quality of
-life. Binary sleep disturbance variables use descriptive factor levels
-to facilitate interpretation and support prevalence estimation and
-logistic regression analyses. In the original dataset, the binary
-variable Poor.sleep.quality does not match the data dictionary criteria
-for the Pittsburgh Sleep Quality Index (it should be greater than 4
-indicating poor sleep quality). To account for this and any other
-errors, this section re-codes the binary sleep quality variables using
-the correct criteria.</p>
+life. Binary sleep disturbance variables were created with descriptive
+factor levels to facilitate interpretation, and support prevalence
+estimation &amp; logistic regression analyses. In the original dataset,
+the binary variable Poor.sleep.quality does not match the data
+dictionary criteria for the Pittsburgh Sleep Quality Index (it should be
+greater than 4 indicating poor sleep quality). To account for this and
+any other potential errors, this section re-codes the binary sleep
+quality variables using the correct criteria.</p>
 <table>
 <caption>Binary sleep disturbance variables (first 5 rows)</caption>
 <thead>
@@ -785,10 +785,13 @@ available observations in the <code>sleep_data</code> subset.</p>
           renal_failure, depression,
           corticosteroid)</code></pre>
 </div>
+</div>
+<div id="summary-statistics" class="section level2">
+<h2>Summary Statistics</h2>
 <div id="demographic-and-clinical-characteristics" class="section level3">
 <h3>Demographic and Clinical Characteristics</h3>
 <p>Continuous demographic and clinical variables are summarized using
-mean, standard deviation (SD), median, minimum, and maximum, and missing
+mean, standard deviation (SD), median, minimum, maximum, and missing
 values. The mean participant age is 52.78 years. The mean BMI is 27.02
 kg/m^2. The mean time since liver transplant is 6.49 years.</p>
 <table>
@@ -990,8 +993,8 @@ Clinical Variables</caption>
 </div>
 <div id="descriptive-statistics-for-sleep-measures-and-quality-of-life" class="section level2">
 <h2>Descriptive Statistics for Sleep Measures and Quality of Life</h2>
-<div id="continuous-sleep-and-hrqol-measures" class="section level3">
-<h3>Continuous Sleep and HRQoL Measures</h3>
+<div id="continuous-sleep-and-qol-measures" class="section level3">
+<h3>Continuous Sleep and QoL Measures</h3>
 <p>Summary statistics for the continuous sleep instruments
 (<code>PSQI</code>, <code>ESS</code>, <code>AIS</code>,
 <code>BSS</code>) and QoL scores (<code>SF36_PCS</code> and
@@ -1092,10 +1095,11 @@ Measures</caption>
 <h3>Visualizations</h3>
 <p>This section shows the distributions of the continuous response
 variables of interest. The dotted red lines show the clinical threshold
-for poor sleep/insomnia. Visually, we can see that for PSQI and AIS,
-most of the patients are above the threshold (they have poor sleep),
-whereas for ESS, most of the patients are below the threshold. The
-quality of life scores do not have such clinical thresholds.</p>
+for poor sleep/insomnia. BSS was not included due to it’s categorical
+nature (0 or 1). Visually, we can see that for PSQI and AIS, most of the
+patients are above the threshold (they have poor sleep), whereas for
+ESS, most of the patients are below the threshold. The quality of life
+scores do not have such clinical thresholds.</p>
 </div>
 </div>
 <div id="distributions-of-continuous-sleep-measures" class="section level2">
