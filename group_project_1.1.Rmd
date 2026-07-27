@@ -1,0 +1,321 @@
+---
+title: "Group Project"
+author: "Ranmali Attapattu"
+date: "2026-07-25"
+output: html_document
+---
+
+
+# Initial Data Exploration and Cleaning
+
+This section of the code focuses on the initial cleaning & familiarization of the data for later analysis.
+This analysis uses the following packages: `dplyr`, `ggplot`, `knitr`, `tidyr`
+
+```{r load-data, results='hide', message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
+
+project_data <- read.csv("project_data.csv")
+```
+
+## Initial Exploration and Cleaning
+### Initial Check
+```{r initial-check, results='hide'}
+head(project_data)
+dim(project_data)
+str(project_data)
+summary(project_data)
+sum(duplicated(project_data))
+
+```
+An initial exploration of the dataset showed that it contains **268 observations** and a mix of *demographic, clinical, medication,* and *patient-reported* outcome variables. No duplicate observations were identified. Most clinical variables were complete, while BMI (23 missing values) and several questionnaire-based measures exhibited missingness. In particular, the Pittsburgh Sleep Quality Index (85 missing values), Epworth Sleepiness Scale (17 missing values before cleaning), Athens Insomnia Scale (6), Berlin Sleepiness Scale (6), and SF-36 quality-of-life measures (21 each) contained incomplete observations. Additionally, **six variables (X.1–X.6)** contained *only missing values* and appear to be empty columns and were removed from the analysis subset as they contained no information.
+
+Range checks were performed to identify potential data entry errors or implausible values. Demographic variables, clinical characteristics, sleep measures, and quality of life scores were within expected ranges. One observation had an **Epworth Sleepiness Scale (ESS)** value of 26, which exceeded the commonly accepted scoring range of 0–24. Because this value could not be verified and was outside the valid range, it was treated as missing for subsequent analyses.
+```{r ess-correction, results='hide'}
+
+project_data <- project_data %>%
+  mutate(
+    Epworth.Sleepiness.Scale = ifelse(Epworth.Sleepiness.Scale > 24, NA, Epworth.Sleepiness.Scale)
+  )
+
+```
+Summary statistics indicate that participants ranged in age from 18 to 80 years (mean = 52.78 years), with an average BMI of 27.02 kg/m² among those with recorded values. The average time since transplant was 6.49 years, ranging from 0.08 to 23.02 years. Overall, the dataset appears well suited for analysis, although variables with substantial missing data will require careful handling before conducting statistical analyses.
+
+## Cleaning
+Given the large number of variables in the original dataset, only variables relevant to the research questions were retained. Variable labels and coding were recoded according to the data dictionary.
+```{r subsetting, echo=FALSE}
+sleep_data <- project_data %>%
+  select(
+    Age,
+    Gender,
+    BMI,
+    Time.from.transplant,
+    Liver.Diagnosis,
+    Recurrence.of.disease,
+    Rejection.graft.dysfunction,
+    Any.fibrosis,
+    Renal.Failure,
+    Depression,
+    Corticoid,
+    Epworth.Sleepiness.Scale,
+    Excessive.daytime.sleepiness,
+    Pittsburgh.Sleep.Quality.Index.Score,
+    Poor.sleep.quality,
+    Berlin.Sleepiness.Scale,
+    Insomnia,
+    Athens.Insomnia.Scale,
+    SF36.PCS,
+    SF36.MCS
+  )
+
+sleep_data <- sleep_data %>%
+  rename(
+    age = Age,
+    gender = Gender,
+    transplant_time = Time.from.transplant,
+    liver_diagnosis = Liver.Diagnosis,
+    recurrence = Recurrence.of.disease,
+    graft_dysfunction = Rejection.graft.dysfunction,
+    fibrosis = Any.fibrosis,
+    renal_failure = Renal.Failure,
+    depression = Depression,
+    corticosteroid = Corticoid,
+    ESS = Epworth.Sleepiness.Scale,
+    ESS_disturbance = Excessive.daytime.sleepiness,
+    PSQI = Pittsburgh.Sleep.Quality.Index.Score,
+    PSQI_quality = Poor.sleep.quality,
+    BSS = Berlin.Sleepiness.Scale,
+    AIS = Athens.Insomnia.Scale,
+    AIS_insomnia = Insomnia,
+    SF36_PCS = SF36.PCS,
+    SF36_MCS = SF36.MCS
+  )
+```
+
+
+### Recoding Demographic and Clinical Variables
+```{r recoding}
+sleep_data$gender = factor(sleep_data$gender,
+                levels = c(1, 2),
+                labels = c("Male", "Female"))
+
+sleep_data$liver_diagnosis = factor(sleep_data$liver_diagnosis,
+                         levels = c(1, 2, 3, 4, 5),
+                         labels = c("Hep C", "Hep B", "PSC/PBC/AHA", "alcohol", "other"))
+
+sleep_data$recurrence = factor(sleep_data$recurrence,
+                    levels = c(0, 1),
+                    labels = c("No", "Yes"))
+
+sleep_data$graft_dysfunction = factor(sleep_data$graft_dysfunction,
+                           levels = c(0, 1),
+                           labels = c("No", "Yes"))
+                         
+sleep_data$fibrosis = factor(sleep_data$fibrosis,
+                             levels = c(0, 1),
+                             labels = c("No", "Yes"))
+
+sleep_data$renal_failure = factor(sleep_data$renal_failure,
+                                  levels = c(0, 1),
+                                  labels = c("No", "Yes"))
+
+sleep_data$depression = factor(sleep_data$depression,
+                               levels = c(0, 1),
+                               labels = c("No", "Yes"))
+
+sleep_data$corticosteroid = factor(sleep_data$corticosteroid,
+                                   levels = c(0, 1),
+                                   labels = c("No", "Yes"))
+
+```
+
+After re-coding, the demographic data is easier to interpret.
+
+```{r table1, results='asis', echo=FALSE, fig.align='centre'}
+kable(sleep_data[1:5,], caption = "First five observations of the analysis subset, with variables renamed for clarity.")
+```
+
+### Recoding Sleep Disturbance Variables
+In order to accommodate multiple analysis angles, sleep disturbance was stored using both the **continuous** questionnaire scores and the clinically meaningful **binary** classifications. Continuous scores were retained to assess the severity of sleep symptoms and their relationship with health-related quality of life. Binary sleep disturbance variables use descriptive factor levels to facilitate interpretation and support prevalence estimation and logistic regression analyses. In the original dataset, the binary variable Poor.sleep.quality does not match the data dictionary criteria for the Pittsburgh Sleep Quality Index (it should be greater than 4 indicating poor sleep quality). To account for this and any other errors, this section re-codes the binary sleep quality variables using the correct criteria.
+```{r binary-vars, echo=FALSE}
+
+# Recalculate binary sleep quality variables directly from continuous measures using data dictionary cutoffs
+sleep_data <- sleep_data %>%
+  mutate(
+    PSQI_quality = factor(
+      ifelse(is.na(PSQI), NA, ifelse(PSQI > 4, "Poor sleep quality", "Adequate quality")),
+      levels = c("Adequate quality", "Poor sleep quality")
+    ),
+    ESS_disturbance = factor(
+      ifelse(is.na(ESS), NA, ifelse(ESS > 10, "Disturbance", "No disturbance")),
+      levels = c("No disturbance", "Disturbance")
+    ),
+    AIS_insomnia = factor(
+      ifelse(is.na(AIS), NA, ifelse(AIS > 5, "Insomnia", "No insomnia")),
+      levels = c("No insomnia", "Insomnia")
+    ),
+    BSS = factor(
+      ifelse(is.na(BSS), NA, ifelse(BSS == 1, "Disturbance", "No disturbance")),
+      levels = c("No disturbance", "Disturbance")
+    )
+  )
+
+binary_vars <- sleep_data[, c("PSQI_quality", "ESS_disturbance", "AIS_insomnia", "BSS")]
+
+kable(binary_vars[1:5,], caption = "Binary sleep disturbance variables (first 5 rows)")
+
+```
+
+###  Missing Values
+Several variables had minimal missingness (<10%), while questionnaire-based measures showed higher levels of missing data, particularly PSQI (31.7%). Since removing all observations with missing values would substantially reduce the sample size and potentially introduce bias, analyses were performed using available cases for each outcome measure.
+```{r missing_values, echo=FALSE, results='asis'}
+kable(colSums(is.na(sleep_data)), col.names = c("Variable", "Missing Value Count"), caption = "A summary of all missing values in the analysis subset.")
+```
+Although regression models require complete datasets, retaining all available observations maximizes statistical power and avoids unnecessary loss of information. Regression analyses involving predictor variables requiring complete data were conducted using the `predictor_data` subset, while descriptive analyses used all available observations in the `sleep_data` subset.
+```{r predictor_data}
+predictor_data <- sleep_data %>%
+  drop_na(age, gender, BMI, transplant_time, 
+          liver_diagnosis, recurrence,
+          graft_dysfunction, fibrosis,
+          renal_failure, depression,
+          corticosteroid)
+```
+
+### Demographic and Clinical Characteristics
+
+Continuous demographic and clinical variables are summarized using mean, standard deviation (SD), median, minimum, maximum, and missing values. The mean participant age is 52.78 years. The mean BMI is 27.02 kg/m^2. The mean time since liver transplant is 6.49 years.
+
+```{r summary-demo-cont, echo=FALSE, warning = FALSE}
+demo_cont_summary <- sleep_data %>%
+  summarise(
+    across(
+      c(age, BMI, transplant_time),
+      list(
+        N = ~sum(!is.na(.)),
+        Mean = ~round(mean(., na.rm = TRUE), 2),
+        SD = ~round(sd(., na.rm = TRUE), 2),
+        Median = ~round(median(., na.rm = TRUE), 2),
+        Min = ~round(min(., na.rm = TRUE), 2),
+        Max = ~round(max(., na.rm = TRUE), 2),
+        Missing = ~sum(is.na(.))
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  ) %>%
+  pivot_longer(everything(), names_to = c("Variable", "Metric"), names_pattern = "(.*)_(.*)") %>%
+  pivot_wider(names_from = Metric, values_from = value) %>%
+  mutate(Variable = case_when(
+    Variable == "age" ~ "Age (years)",
+    Variable == "BMI" ~ "Body Mass Index (kg/m^2)",
+    Variable == "transplant_time" ~ "Time Since Transplant (years)"
+  ))
+
+kable(demo_cont_summary, caption = "Summary Statistics for Continuous Demographic and Clinical Variables")
+```
+The categorical variables are summarized here by their category (level) counts and percentages. There are more males in the dataset than females (64.6% vs 35.4%). Liver diagnoses vary greatly, but the most common category is 'PSC/PBC/AHA' (28%). Disease recurrence occurred in 23.9% of patients. Graft dysfunction occurred in 25.7% of patients. Fibrosis occurred in 15.7% of patients. Renal Failure occurred in 1.5% of patients. Depression occurred in 21.3% of patients. Corticosteroid use happened in 31.7% of patients.
+
+```{r categorical_summary, echo = FALSE, warning = FALSE}
+cat_vars <- c("gender", "liver_diagnosis", "recurrence", "graft_dysfunction", "fibrosis", "renal_failure", "depression", "corticosteroid")
+
+cat_summary_list <- lapply(cat_vars, function(var) {
+  sleep_data %>%
+    group_by(Category = as.character(.data[[var]])) %>%
+    summarise(Count = n(), .groups = "drop") %>%
+    mutate(
+      Variable = var,
+      Percentage = round((Count / sum(Count)) * 100, 1)
+    )
+})
+
+demo_cat_summary <- bind_rows(cat_summary_list) %>%
+  select(Variable, Category, Count, Percentage)
+
+kable(demo_cat_summary, caption = "Frequency Distributions for Demographic Categorical and Clinical Variables")
+```
+
+---
+
+## Descriptive Statistics for Sleep Measures and Quality of Life
+
+### Continuous Sleep and HRQoL Measures
+Summary statistics for the continuous sleep instruments (`PSQI`, `ESS`, `AIS`, `BSS`) and QoL scores (`SF36_PCS` and `SF36_MCS`). The mean Pittsburgh Sleep Quality Index (PSQI) is 7.38, which is above the poor sleep quality threshold of 4. The mean Epworth Sleepiness Scale (ESS)	is 7.76, which is below the sleep disturbance threshold of 10. The mean Athens Insomnia Scale (AIS) is 7.41, which is above the insomnia threshold of 5. The mean SF-36 Physical Component Summary (PCS)	is 43.05 and the mean SF-36 Mental Component Summary is 46.22. 
+
+```{r summary-sleep-qol-cont, echo=FALSE, warning = FALSE}
+sleep_qol_cont_summary <- sleep_data %>%
+  summarise(
+    across(
+      c(PSQI, ESS, AIS, SF36_PCS, SF36_MCS),
+      list(
+        N = ~sum(!is.na(.)),
+        Mean = ~round(mean(., na.rm = TRUE), 2),
+        SD = ~round(sd(., na.rm = TRUE), 2),
+        Median = ~round(median(., na.rm = TRUE), 2),
+        IQR = ~round(IQR(., na.rm = TRUE), 2),
+        Min = ~round(min(., na.rm = TRUE), 2),
+        Max = ~round(max(., na.rm = TRUE), 2),
+        Missing = ~sum(is.na(.))
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  ) %>%
+  pivot_longer(everything(), names_to = c("Measure", "Metric"), names_pattern = "(.*)_(.*)") %>%
+  pivot_wider(names_from = Metric, values_from = value) %>%
+  mutate(Measure = case_when(
+    Measure == "PSQI" ~ "Pittsburgh Sleep Quality Index (PSQI)",
+    Measure == "ESS" ~ "Epworth Sleepiness Scale (ESS)",
+    Measure == "AIS" ~ "Athens Insomnia Scale (AIS)",
+    Measure == "BSS" ~ "Berlin Sleepiness Scale (BSS)",
+    Measure == "SF36_PCS" ~ "SF-36 Physical Component Summary (PCS)",
+    Measure == "SF36_MCS" ~ "SF-36 Mental Component Summary (MCS)"
+  ))
+
+kable(sleep_qol_cont_summary, caption = "Summary Statistics for Continuous Sleep Disturbance and QoL Measures")
+```
+
+### Visualizations
+This section shows the distributions of the continuous response variables of interest. The dotted red lines show the clinical threshold for poor sleep/insomnia. BSS was not included due to it's categorical nature (0 or 1). Visually, we can see that for PSQI and AIS, most of the patients are above the threshold (they have poor sleep), whereas for ESS, most of the patients are below the threshold. The quality of life scores do not have such clinical thresholds. 
+
+## Distributions of Continuous Sleep Measures
+```{r fig-sleep-histograms, echo = FALSE, warning = FALSE}
+sleep_long <- sleep_data %>%
+  select(PSQI, ESS, AIS) %>%
+  pivot_longer(cols = everything(), names_to = "Measure", values_to = "Score")
+
+cutoff_df <- data.frame(
+  Measure = c("PSQI", "ESS", "AIS"),
+  Cutoff = c(4, 10, 5)
+)
+
+ggplot(sleep_long, aes(x = Score)) +
+  geom_histogram(binwidth = 1, fill = "gray70", color = "black") +
+  geom_vline(data = cutoff_df, aes(xintercept = Cutoff), color = "red", linetype = "dashed", size = 1) +
+  facet_wrap(~ Measure, scales = "free") +
+  theme_bw() +
+  labs(
+    title = "Distributions of Continuous Sleep Disturbance Scores",
+    subtitle = "Red dashed line indicates standard clinical threshold for disturbance",
+    x = "Score",
+    y = "Count"
+  )
+```
+
+### Distributions of Quality of Life Measures
+```{r fig-qol-histograms, echo=FALSE, warning = FALSE}
+qol_long <- sleep_data %>%
+  select(SF36_PCS, SF36_MCS) %>%
+  pivot_longer(cols = everything(), names_to = "Component", values_to = "Score") %>%
+  mutate(Component = ifelse(Component == "SF36_PCS", "Physical Component Summary (PCS)", "Mental Component Summary (MCS)"))
+
+ggplot(qol_long, aes(x = Score)) +
+  geom_histogram(binwidth = 3, fill = "gray70", color = "black") +
+  facet_wrap(~ Component, scales = "free") +
+  theme_bw() +
+  labs(
+    title = "Distributions of Health-Related Quality of Life Scores (SF-36)",
+    x = "Score (Higher = Better Quality of Life)",
+    y = "Count"
+  )
+```
+
