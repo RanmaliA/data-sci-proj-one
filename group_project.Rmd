@@ -106,28 +106,28 @@ sleep_data$liver_diagnosis = factor(sleep_data$liver_diagnosis,
                          labels = c("Hep C", "Hep B", "PSC/PBC/AHA", "alcohol", "other"))
 
 sleep_data$recurrence = factor(sleep_data$recurrence,
-                    levels = c(1, 0),
-                    labels = c("Yes", "No"))
+                    levels = c(0, 1),
+                    labels = c("No", "Yes"))
 
 sleep_data$graft_dysfunction = factor(sleep_data$graft_dysfunction,
-                           levels = c(1, 0),
-                           labels = c("Yes", "No"))
+                           levels = c(0, 1),
+                           labels = c("No", "Yes"))
                          
 sleep_data$fibrosis = factor(sleep_data$fibrosis,
-                  levels = c(1, 0),
-                  labels = c("Yes", "No"))
+                             levels = c(0, 1),
+                             labels = c("No", "Yes"))
 
 sleep_data$renal_failure = factor(sleep_data$renal_failure,
-                       levels = c(1, 0),
-                       labels = c("Yes", "No"))
+                                  levels = c(0, 1),
+                                  labels = c("No", "Yes"))
 
 sleep_data$depression = factor(sleep_data$depression,
-                    levels = c(1, 0),
-                    labels = c("Yes", "No"))
+                               levels = c(0, 1),
+                               labels = c("No", "Yes"))
 
 sleep_data$corticosteroid = factor(sleep_data$corticosteroid,
-                        levels = c(1, 0),
-                        labels = c("Yes", "No"))
+                                   levels = c(0, 1),
+                                   labels = c("No", "Yes"))
 
 ```
 
