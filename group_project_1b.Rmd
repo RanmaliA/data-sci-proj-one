@@ -1,0 +1,521 @@
+---
+title: "Group Project: Research Question 1b"
+author: "Saadana Balasubramanian"
+date: "2026-07-26"
+output: html_document
+
+---
+```{r chunk-setup,include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                       fig.align = "center")
+```
+
+# Research Question 1b
+
+This section of the code addresses the second component of the first research question: "What is the prevalence of subjective sleep disturbance and what are its predictors in post liver transplant recipients?"
+
+Each sleep quality score was modelled using demographic variables (Age,
+Gender, BMI, time elapsed since transplant, liver diagnosis, recurrence
+of disease, evidence of rejection/graft dysfunction, any fibrosis, renal
+failure, depression, and corticosteroid use) as predictors.
+
+## Chosen Models
+
+The four instruments were recorded on different scales so two modeling
+strategies were used depending on the instrument:
+
+1.  **Continuous outcome — multiple linear regression.** PSQI, ESS, and
+    AIS are all instruments that use numeric scores to indicate sleep
+    quality. A multiple linear regression model was used to predict
+    sleep quality while all demographic variables were entered as
+    predictors. The output shows the estimated association of each
+    predictor with sleep score while holding all other predictors
+    constant.
+
+2.  **Binary outcome — multiple logistic regression.** BSS uses a binary
+    scale (1 = disturbance present). Additionally, PSQI, ESS, and AIS
+    measurements were also converted to binary variables, using the
+    clinically accepted thresholds to ensure the analysis is
+    comprehensive. Multiple logistic regression models with the same set
+    of predictors was used for these scales.
+
+## Model Fitting and Comparison
+
+There are 3 linear and 4 logistic models that were fitted on
+`predictor_data`. This cleaned dataset contains all 11 predictors.
+
+The coefficient (or odds ratio for logistic models), 95% confidence
+interval, and p-value per predictor is derived from each model. From
+this, a summary table of p-values across all 7 models is constructed to
+compare which predictors are significant in each model.
+
+------------------------------------------------------------------------
+
+# R Code
+
+## Load Packages & Import Data
+
+```{r libraries}
+# Packages used in this script -------------------------------------------
+# car   : vif() for multicollinearity diagnostics
+# knitr : kable() for formatted tables in the knitted report
+
+library(car)
+library(knitr)
+
+#The existing cleaning pipeline is converted into an .R script 
+knitr::purl("group_project.Rmd", output = "group_project_cleaning.R", quiet = TRUE)
+source("group_project_cleaning.R")
+
+# Confirm the objects we need now exist before continuing
+stopifnot(exists("sleep_data"), exists("predictor_data"))
+dim(predictor_data)
+```
+
+## Missing data check
+
+Using lm() and glm() automatically drops missing values and conducts a
+complete-case analysis by default. Before fitting the models, this
+initial check is to find where missing data occurs. If there was a large
+number of measured variables (ie. age, BMI, depression) that are missing
+for certain outcomes then this would suggest those values are missing
+not at random (NMAR). In this case, the sample isn't representative of
+the population and complete-case analysis would be biased.
+
+```{r missing-data-check}
+
+# sapply() is used to apply the same function across every column in the list 
+# this is used to count how many NA values are in each column
+
+sapply(predictor_data[, c("PSQI", "ESS", "AIS", "PSQI_quality", "ESS_disturbance", "AIS_insomnia", "BSS", "age", "gender", "BMI", "transplant_time", "liver_diagnosis", "recurrence", "graft_dysfunction", "fibrosis", "renal_failure","depression", "corticosteroid")],
+       function(x) sum(is.na(x)))
+
+# Check is PSQI missing data > 30%
+n_total <- nrow(predictor_data)
+
+psqi_missing_pct <- sum(is.na(predictor_data$PSQI)) / n_total * 100
+round(psqi_missing_pct, 1)
+
+psqi_missing_pct
+
+```
+
+**Findings**: The table shows that there are no missing values for any
+of the predictors which suggests that complete-case analysis is
+appropriate to use. However, there are missing values for the outcome
+variables (PSQI:80;ESS:15;AIS:5; BSS:6).
+
+## Linear Regression Models (continuous variables)
+
+All 11 predictors are entered simultaneously in each model. Each
+coefficient represents the effect of that predictor while holding the
+others constant.
+
+```{r linear-models}
+# lm() fits a multiple linear regression model. 
+
+lm_PSQI <- lm(PSQI ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+lm_ESS <- lm(ESS ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+lm_AIS <- lm(AIS ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(lm_PSQI)
+summary(lm_ESS)
+summary(lm_AIS)
+
+# 95% confidence intervals for the linear regression model coefficients, 
+# rounded to 2 decimal places. 
+round(confint(lm_PSQI), 2)
+round(confint(lm_ESS), 2)
+round(confint(lm_AIS), 2)
+
+```
+
+## Diagnostics and Multiple Comparisons
+
+The assumptions of linear regression models are based on equal variance
+of residuals, normality of residuals and linearity. These conditions
+must be met to ensure that the model's predictions are accurate.
+Diagnostic plots were used to evaluate if these assumptions have been
+met. The models were also checked for multicollinearity using the
+variance inflation factor (VIF). The multicollinearity check confirms
+the assumption that none of the predictors in the models are correlated
+with each other.
+
+```{r linear-diagnostics}
+# Residual diagnostic plots 
+par(mfrow = c(2, 2))
+plot(lm_PSQI, main = "PSQI") 
+plot(lm_ESS,  main = "ESS")
+plot(lm_AIS,  main = "AIS")
+par(mfrow = c(1, 1))
+
+# Multicollinearity check - VIF > 5 (or 10) flags problematic predictors
+vif(lm_PSQI)
+vif(lm_ESS)
+vif(lm_AIS)
+```
+
+**Reasoning:** Using plot on a lm() creates 4 diagnostic plots.
+par(mfrow = c(2, 2)) arranges these plots in a 2x2 grid. The first plot
+checks linearity by ensuring that points are randomly scattered around
+the horizontal line at 0. A curved pattern in this plot would indicate
+that there is a non-linear relationship. The second qq plot checks
+whether residuals are normally distributed by ensuring that points fall
+along a diagonal line. Since the sample size is large (150-260 per
+model), the data is expected to be normally distributed. The third plot
+checks for equal variance of residuals by ensuring that points are
+spread horizontally. The fourth plot checks if there are certain
+observations that disproportionately affect the model.
+
+**Findings:**
+
+*Residual diagnostic plots:* There were no unusual findings in any of
+the plots which confirms that the assumptions of the linear regression
+model have been met (linearity, homoscedasticity, normality).
+
+*Multicollinearity check:* There were no VIF scores above 5, which
+confirms that none of the predictors in the model are correlated with
+each other.
+
+## Logistic Regression Models (Binary Sleep Outcomes)
+
+All 11 predictors are entered simultaneously in each model. Each
+coefficient represents the effect of that predictor while holding the
+others constant.
+
+```{r secondary-analysis}
+
+# glm(..., family = binomial) fits a multiple logistic regression.
+# Coefficients represent the log-odds of success
+# exponentiate = TRUE converts log-odds to odds ratios
+
+glm_PSQI_full <- glm(PSQI_quality ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_ESS_full <- glm(ESS_disturbance ~ age + gender + BMI + transplant_time + liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_AIS_full <- glm(AIS_insomnia ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_BSS_full <- glm(BSS ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure + 
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(glm_PSQI_full)
+summary(glm_ESS_full)
+summary(glm_AIS_full)
+summary(glm_BSS_full)
+
+# Odds ratios
+
+# For each logistic model, exponentiating the coefficients converts them from 
+# log-odds to odds ratios. Values above 1 indicate higher odds of poor sleep 
+# quality while values below 1 indicate lower odds. 
+round(exp(glm_PSQI_full$coefficients), 2)
+round(exp(glm_ESS_full$coefficients), 2)
+round(exp(glm_AIS_full$coefficients), 2)
+round(exp(glm_BSS_full$coefficients), 2)
+
+# 95% confidence intervals for the odds ratios, rounded to 2 decimal places
+round(exp(confint(glm_PSQI_full)), 2)
+round(exp(confint(glm_ESS_full)), 2)
+round(exp(confint(glm_AIS_full)), 2)
+round(exp(confint(glm_BSS_full)), 2)
+
+```
+
+## Multicollinearity Check
+
+```{r logistic-diagnostics}
+
+# Multicollinearity check for the logistic models 
+vif(glm_PSQI_full)
+vif(glm_ESS_full)
+vif(glm_AIS_full)
+vif(glm_BSS_full)
+```
+
+**Findings:**
+
+*Multicollinearity check:* There were no VIF scores above 5 for any of
+the models, which confirms that none of the predictors in the model are
+correlated with each other.
+
+## Verifying Maximum Predictors
+
+The maximum number of predictors for each model is identified using the
+following formula: p =\< m/15. The following code identifies the number
+of sample size in each linear regression model model, and the class with
+the smallest sample size in each logistic regression model. Then, the
+maximum number of predictors is found by dividing each sample size by 15
+(the generally accepted rule). The final output is displayed as a
+dataframe.
+
+```{r verifying-max-predictors}
+
+#nobs() finds the total number of observations that were used to predict the 
+#output. This identifies the sample size of each linear regression model.
+n_PSQI <- nobs(lm_PSQI)
+n_ESS <- nobs(lm_ESS)
+n_AIS <- nobs(lm_AIS)
+
+#A frequency table is created which contains the number of observations within 
+#each class of the outcome variable. The class with the smallest sample size 
+#is used for this calculation. This is identified using 'min' and assigned to 
+#a new variable. 
+
+m_PSQI_glm <- min(table(predictor_data$PSQI_quality))
+m_ESS_glm  <- min(table(predictor_data$ESS_disturbance))
+m_AIS_glm  <- min(table(predictor_data$AIS_insomnia))
+m_BSS_glm  <- min(table(predictor_data$BSS))
+
+#A data frame is created to clearly display results. The first column includes 
+#the model names. The second column lists the m value of each model and the last 
+#column shows the maximum number of predictors used. 
+
+data.frame(
+  model = c("PSQI_lm", "ESS_lm", "AIS_lm",
+            "PSQI_quality_glm", "ESS_disturbance_glm", "AIS_insomnia_glm", 
+            "BSS_glm"),
+  m = c(n_PSQI, n_ESS, n_AIS, m_PSQI_glm, m_ESS_glm, m_AIS_glm, m_BSS_glm),
+  max_p = floor(c(n_PSQI, n_ESS, n_AIS, m_PSQI_glm, m_ESS_glm, m_AIS_glm, 
+                  m_BSS_glm) / 15)
+)
+```
+
+**Findings:** Based on this table, the current logistic regression
+models exceed the maximum number of predictors that can be used (PSQI: 7
+max predictors; ESS: 4 max predictors; AIS: 7 max predictors; BSS: 5 max
+predictors). For these models, there is an increased risk of overfitting
+and model inaccuracy.
+
+## Secondary analysis with reduced models
+
+Based on the results above, each logistic regression model above exceeds
+the maximum number of predictors that can be included in each model. To
+overcome this issue, reduced models were created by narrowing the number
+of predictors used to avoid exceeding the maximum limit. These
+predictors were chosen using a priori domain knowledge.
+
+```{r logistic-models}
+
+# glm(..., family = binomial) fits a multiple logistic regression.
+# Coefficients represent the log-odds of success
+# exponentiate = TRUE converts log-odds to odds ratios
+
+# The outcome of each model has been encoded as binary based on the clinically verified thresholds during the data processing procedure. 
+
+# PSQI logistic regression with 7 df
+glm_PSQI_reduced <- glm(PSQI_quality ~ depression + corticosteroid + BMI +
+                          transplant_time + renal_failure + age + gender,
+                        family = binomial, data = predictor_data)
+
+# ESS logistic regression with 4 df
+glm_ESS_reduced <- glm(ESS_disturbance ~ depression + corticosteroid + BMI +
+                         transplant_time,
+                       family = binomial, data = predictor_data)
+
+# AIS logistic regression with 7 df
+glm_AIS_reduced <- glm(AIS_insomnia ~ depression + corticosteroid + BMI +
+                         transplant_time + renal_failure + age + gender,
+                       family = binomial, data = predictor_data)
+
+# BSS logistic regression with 5 df 
+glm_BSS_reduced <- glm(BSS ~ depression + corticosteroid + BMI +
+                         transplant_time + age,
+                       family = binomial, data = predictor_data)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(glm_PSQI_reduced)
+summary(glm_ESS_reduced)
+summary(glm_AIS_reduced)
+summary(glm_BSS_reduced)
+
+# Odds ratios
+# For each logistic model, exponentiating the coefficients converts them from 
+# log-odds to odds ratios. Values above 1 indicate higher odds of poor sleep 
+# quality while values below 1 indicate lower odds. 
+
+round(exp(glm_PSQI_reduced$coefficients), 2)
+round(exp(glm_ESS_reduced$coefficients), 2)
+round(exp(glm_AIS_reduced$coefficients), 2)
+round(exp(glm_BSS_reduced$coefficients), 2)
+
+# 95% confidence intervals for the odds ratios, rounded to 2 decimal places
+round(exp(confint(glm_PSQI_reduced)), 2)
+round(exp(confint(glm_ESS_reduced)), 2)
+round(exp(confint(glm_AIS_reduced)), 2)
+round(exp(confint(glm_BSS_reduced)), 2)
+
+```
+
+# Comparing Full vs Reduced Logistic Models
+
+```{r compare-logistic-models}
+
+# Likelihood ratio test (LRT) is used to compare full vs reduced logistic models
+# anova() with test = "Chisq" compares the change in deviance between two 
+# nested models. The null hypothesis is that the reduced model fits the data
+# well while the alternative hypothesis is that the reduced model does fit the 
+# data better than the full model. A significant p-value means the full model 
+# fits significantly better. A non-significant p-value supports using the 
+# reduced model.
+
+anova(glm_PSQI_reduced, glm_PSQI_full, test = "Chisq")
+anova(glm_ESS_reduced,  glm_ESS_full,  test = "Chisq")
+anova(glm_AIS_reduced,  glm_AIS_full,  test = "Chisq")
+anova(glm_BSS_reduced,  glm_BSS_full,  test = "Chisq")
+```
+
+**Findings:** The reduced model of PSQI, AIS and BSS fits the data
+better. The full model of ESS fits the data significantly better.
+
+# Comparing Models & Predictors
+
+## Summary Table 1: Reduced model comparison across various sleep quality measurements
+
+A summary table is created to compare each sleep quality measurement and
+the set of predictors that are significantly associated with the outcome
+in each. The reduced logistic regression models are used in this
+comparison. The p-value of each model's coefficient matrix is extracted
+from the summary() output to create this table. For predictors that are
+not present in the reduced model, NA is used in their place to indicate
+they were removed from the model.
+
+```{r comparision-table-1}
+
+# The 4th column of summary(model)$coefficients has the p-values for
+# lm() and glm(). Row 1 (containing the intercept) is dropped since we are
+# only comparing each predictor.
+
+p_PSQI     <- summary(lm_PSQI)$coefficients[-1, 4]
+p_ESS      <- summary(lm_ESS)$coefficients[-1, 4]
+p_AIS      <- summary(lm_AIS)$coefficients[-1, 4]
+p_PSQI_reduced <- summary(glm_PSQI_reduced)$coefficients[-1, 4]
+p_ESS_reduced  <- summary(glm_ESS_reduced)$coefficients[-1, 4]
+p_AIS_reduced  <- summary(glm_AIS_reduced)$coefficients[-1, 4]
+p_BSS_reduced      <- summary(glm_BSS_reduced)$coefficients[-1, 4]
+
+
+# all_predictor is a new variable containing all of the variable names included in the models 
+all_predictors <- unique(c(names(p_PSQI), names(p_ESS), names(p_AIS),
+                            names(p_PSQI_reduced), names(p_ESS_reduced),
+                            names(p_AIS_reduced), names(p_BSS_reduced)))
+
+# Unlike the full models, the reduced models don't all use the same predictors. Because of this, using cbind() would cause an error or mislabel columns. For example, there's no position 5 in p_ESS_bin because a 5th variable wasn't included. In this case, another variable would be substituted in its place and would risk mislabelling.
+
+# Using match() aligns each model's p-values to its corresponding predictor, using a common set of predictor names. If that predictor wasn't included in the model, NA fills that spot. 
+
+pval_matrix_1 <- cbind(
+  PSQI_lm              = p_PSQI[match(all_predictors, names(p_PSQI))],
+  ESS_lm               = p_ESS[match(all_predictors, names(p_ESS))],
+  AIS_lm               = p_AIS[match(all_predictors, names(p_AIS))],
+  PSQI_quality_glm     = p_PSQI_reduced[match(all_predictors, names(p_PSQI_reduced))],
+  ESS_disturbance_glm  = p_ESS_reduced[match(all_predictors, names(p_ESS_reduced))],
+  AIS_insomnia_glm     = p_AIS_reduced[match(all_predictors, names(p_AIS_reduced))],
+  BSS_glm              = p_BSS_reduced[match(all_predictors, names(p_BSS_reduced))]
+)
+
+#Row names of the matrix are assigned using the common set of variable names
+rownames(pval_matrix_1) <- all_predictors
+
+round(pval_matrix_1, 3)
+kable(round(pval_matrix_1, 3), caption = "P-values for each reduced model's predictors across the seven fitted models (reduced models)")
+```
+
+## Summary Table 2: Full model comparision across various sleep quality measurements
+
+A summary table is created to compare each sleep quality measurement and
+the full set of predictors. The p-value of each model's coefficient
+matrix is extracted from the summary() output to create this table. This
+full model table is included as a part of the secondary analysis to
+report all tested predictors with full transparency, ensuring the
+analysis comprehensive. The current results can be compared with the
+reduced table to confirm that the excluded predictors were not
+significant in the model and to compare whether these conclusions are
+robust.
+
+```{r comparison-table-2}
+
+# The 4th column of summary(model)$coefficients has the p-values for
+# lm() and glm(). Row 1 (containing the intercept) is dropped since we are
+# only comparing each predictor.
+
+p_PSQI <- summary(lm_PSQI)$coefficients[-1, 4]
+p_ESS  <- summary(lm_ESS)$coefficients[-1, 4]
+p_AIS  <- summary(lm_AIS)$coefficients[-1, 4]
+p_PSQI_full <- summary(glm_PSQI_full)$coefficients[-1, 4]
+p_ESS_full  <- summary(glm_ESS_full)$coefficients[-1, 4]
+p_AIS_full  <- summary(glm_AIS_full)$coefficients[-1, 4]
+p_BSS_full     <- summary(glm_BSS_full)$coefficients[-1, 4]
+
+# All 7 models use the same 11 predictors and the coefficient names 
+# are the same in every model. cbind() combines the columns with the p-value
+# for each matrix. Each row represents the predictor and each column 
+# represents the model that was used.
+pval_matrix_2 <- cbind(
+  PSQI_lm = p_PSQI,
+  ESS_lm = p_ESS,
+  AIS_lm = p_AIS,
+  PSQI_quality_glm = p_PSQI_full,
+  ESS_disturbance_glm = p_ESS_full,
+  AIS_insomnia_glm = p_AIS_full,
+  BSS_glm = p_BSS_full
+)
+
+round(pval_matrix_2, 3)
+kable(round(pval_matrix_2, 3), caption = "P-values for each full model's predictors across the seven fitted models (complete models)")
+```
+
+## Significance flag table
+
+A summary table is created with asterisks flagging predictors that are
+significantly associated (p \< 0.05) with sleep quality for quick visual
+scanning.
+
+```{r significance-flags}
+sig_matrix <- ifelse(pval_matrix_1 < 0.05, "*", "")
+kable(sig_matrix, caption = "Significance flags (p < 0.05) by predictor and model")
+```
+
+## Consistently significant predictors across models
+
+The following table shows the number of models where each predictor is
+significant in comparison to the total number of models that were
+tested. This identifies predictors that are more consistently associated
+with sleep quality across different sleep quality measurement scales.
+
+```{r consistency-summary}
+
+# apply(..., 1, sum) goes row by row (i.e. predictor by predictor) and
+# counts how many of the 7 models have a significant p-value (p < 0.05) for that 
+# row.
+n_sig_models <- apply(pval_matrix_1 < 0.05, 1, sum, na.rm = TRUE)
+n_tested_models <- apply(!is.na(pval_matrix_1), 1, sum)
+
+consistency_summary <- data.frame(
+  Predictor          = rownames(pval_matrix_1),
+  Models_significant = n_sig_models,
+  Models_tested       = n_tested_models
+)
+
+# This sorts the table so the most consistently significant predictors appear first.
+consistency_summary <- consistency_summary[order(-consistency_summary$Models_significant), ]
+
+kable(consistency_summary, row.names = FALSE,
+      caption = "Number of models in which each predictor is significant (p < 0.05), 
+      out of models where it was tested")
+```
