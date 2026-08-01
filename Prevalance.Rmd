@@ -1,0 +1,534 @@
+---
+title: "Prevalence of Sleep Disturbance"
+author: "Jeny Patel"
+date: "2026-07-31"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+# Prevalence of Sleep Disturbance
+
+## Purpose
+
+The purpose of this analysis is to estimate the prevalence of sleep disturbance among post-liver transplant recipients using four sleep instruments: the Epworth Sleepiness Scale (ESS), Pittsburgh Sleep Quality Index (PSQI), Athens Insomnia Scale (AIS), and Berlin Sleepiness Scale (BSS).
+
+Prevalence estimates are calculated using the binary classifications of each instrument. Continuous ESS, PSQI, and AIS scores are also summarized to describe the distributions and severity of sleep-related symptoms.
+
+# Data Preparation
+
+## Load packages
+
+```{r load-packages, echo=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(scales)
+```
+
+## Load cleaned dataset
+
+The cleaned dataset provided by the data-management team is loaded and stored as an object called `sleep_data`.
+
+```{r load-data, echo=FALSE}
+# Check the directory being used during knitting
+
+sleep_data <- read.csv(
+  "project_data.csv",
+  stringsAsFactors = FALSE
+)
+dim(sleep_data)
+```
+
+The dataset contains `r nrow(sleep_data)` participants and `r ncol(sleep_data)` variables.
+
+## Check required variables
+
+```{r check-variables, echo=FALSE}
+required_variables <- c(
+  "Epworth.Sleepiness.Scale",
+  "Excessive.daytime.sleepiness",
+  "Pittsburgh.Sleep.Quality.Index.Score",
+  "Poor.sleep.quality",
+  "Athens.Insomnia.Scale",
+  "Insomnia",
+  "Berlin.Sleepiness.Scale"
+)
+
+missing_variables <- setdiff(
+  required_variables,
+  names(sleep_data)
+)
+
+if (length(missing_variables) > 0) {
+  stop(
+    paste(
+      "The following required variables are missing:",
+      paste(missing_variables, collapse = ", ")
+    )
+  )
+} else {
+  print("All required sleep variables are available.")
+}
+```
+
+## Sleep disturbance definitions
+
+The following clinical cutoffs were used:
+
+- ESS greater than 10 indicates excessive daytime sleepiness.
+- PSQI greater than 4 indicates poor sleep quality.
+- AIS greater than 5 indicates insomnia.
+- BSS equal to 1 indicates a high likelihood of sleep-disordered breathing.
+
+The cleaned dataset already contains binary variables corresponding to these definitions:
+
+| Instrument | Continuous variable | Binary variable |
+|:--|:--|:--|
+| ESS | `Epworth.Sleepiness.Scale` | `Excessive.daytime.sleepiness` |
+| PSQI | `Pittsburgh.Sleep.Quality.Index.Score` | `Poor.sleep.quality` |
+| AIS | `Athens.Insomnia.Scale` | `Insomnia` |
+| BSS | Not applicable | `Berlin.Sleepiness.Scale` |
+
+# Methods
+
+Prevalence was calculated separately for each sleep instrument by dividing the number of participants classified as having sleep disturbance by the number of participants with non-missing data for that instrument. Participants with missing values were excluded only from the calculation involving the affected instrument.
+
+Exact binomial 95% confidence intervals were calculated for each prevalence estimate using the `binom.test()` function in R. ESS, PSQI, and AIS were also summarized as continuous scores using the number of complete observations, mean, standard deviation, median, first and third quartiles, minimum, and maximum.
+
+The prevalence estimates were compared using a bar graph with 95% confidence interval error bars. 
+
+# Prevalence Analysis
+
+## Check the coding of binary variables
+
+Before calculating prevalence, the frequency of each binary outcome was examined.
+
+```{r check-binary-coding, echo=FALSE}
+table(
+  sleep_data$Excessive.daytime.sleepiness,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$Poor.sleep.quality,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$Insomnia,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$Berlin.Sleepiness.Scale,
+  useNA = "ifany"
+)
+```
+
+Excessive daytime sleepiness (ESS): 201 participants were classified as not having excessive daytime sleepiness (0), while 67 were classified as having excessive daytime sleepiness (1).
+
+Poor sleep quality (PSQI): 151 participants had good sleep quality (0) and 117 had poor sleep quality (1).
+
+Insomnia (AIS): 123 participants did not meet the criteria for insomnia (0), whereas 145 met the criteria for insomnia (1).
+
+Berlin Sleepiness Scale (BSS): 160 participants had a low likelihood of sleep-disordered breathing (0), 102 had a high likelihood (1), and 6 had missing values.
+
+The binary variables should contain:
+
+- `0` for no sleep disturbance;
+- `1` for sleep disturbance;
+- `NA` for missing information.
+
+## Function for prevalence and confidence intervals
+
+```{r prevalence-function, echo=FALSE}
+calculate_prevalence <- function(variable, instrument_name) {
+  
+  # Remove missing observations
+  available_values <- variable[!is.na(variable)]
+  
+  # Count participants with sleep disturbance
+  disturbed <- sum(available_values == 1)
+  
+  # Count participants with available data
+  total <- length(available_values)
+  
+  # Exact binomial confidence interval
+  ci_result <- binom.test(
+    x = disturbed,
+    n = total,
+    conf.level = 0.95
+  )
+  
+  data.frame(
+    Instrument = instrument_name,
+    Disturbed = disturbed,
+    Available_N = total,
+    Missing = sum(is.na(variable)),
+    Prevalence = disturbed / total,
+    Lower_CI = ci_result$conf.int[1],
+    Upper_CI = ci_result$conf.int[2]
+  )
+}
+```
+
+## Calculate prevalence for all four instruments
+
+```{r calculate-prevalence, echo=FALSE}
+ess_prevalence <- calculate_prevalence(
+  sleep_data$Excessive.daytime.sleepiness,
+  "ESS"
+)
+
+psqi_prevalence <- calculate_prevalence(
+  sleep_data$Poor.sleep.quality,
+  "PSQI"
+)
+
+ais_prevalence <- calculate_prevalence(
+  sleep_data$Insomnia,
+  "AIS"
+)
+
+bss_prevalence <- calculate_prevalence(
+  sleep_data$Berlin.Sleepiness.Scale,
+  "BSS"
+)
+
+prevalence_results <- bind_rows(
+  ess_prevalence,
+  psqi_prevalence,
+  ais_prevalence,
+  bss_prevalence
+)
+
+prevalence_results
+```
+
+## Format the prevalence table
+
+```{r prevalence-table, echo=FALSE}
+prevalence_table <- prevalence_results %>%
+  mutate(
+    `Prevalence (%)` = round(Prevalence * 100, 1),
+    `95% CI` = paste0(
+      round(Lower_CI * 100, 1),
+      "%–",
+      round(Upper_CI * 100, 1),
+      "%"
+    )
+  ) %>%
+  select(
+    Instrument,
+    Disturbed,
+    Available_N,
+    Missing,
+    `Prevalence (%)`,
+    `95% CI`
+  )
+
+kable(
+  prevalence_table,
+  caption = "Table 1. Prevalence of sleep disturbance according to four sleep instruments.",
+  align = c("l", "r", "r", "r", "r", "c"),
+  col.names = c(
+    "Instrument",
+    "Sleep disturbance, n",
+    "Available N",
+    "Missing, n",
+    "Prevalence (%)",
+    "95% CI"
+  )
+)
+```
+
+# Continuous Sleep Score Summaries
+
+BSS was not included in the continuous summary because it is a binary measure in this dataset.
+
+## Convert the continuous scores into long format
+
+```{r continuous-data, echo=FALSE}
+continuous_sleep_data <- sleep_data %>%
+  select(
+    ESS = Epworth.Sleepiness.Scale,
+    PSQI = Pittsburgh.Sleep.Quality.Index.Score,
+    AIS = Athens.Insomnia.Scale
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Instrument",
+    values_to = "Score"
+  )
+```
+
+## Calculate descriptive statistics
+
+```{r continuous-summary,echo=FALSE}
+continuous_summary <- continuous_sleep_data %>%
+  group_by(Instrument) %>%
+  summarise(
+    Available_N = sum(!is.na(Score)),
+    Missing = sum(is.na(Score)),
+    Mean = mean(Score, na.rm = TRUE),
+    SD = sd(Score, na.rm = TRUE),
+    Median = median(Score, na.rm = TRUE),
+    Q1 = quantile(Score, 0.25, na.rm = TRUE),
+    Q3 = quantile(Score, 0.75, na.rm = TRUE),
+    Minimum = min(Score, na.rm = TRUE),
+    Maximum = max(Score, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    across(
+      c(Mean, SD, Median, Q1, Q3, Minimum, Maximum),
+      ~ round(.x, 2)
+    )
+  )
+
+kable(
+  continuous_summary,
+  caption = "Table 2. Descriptive statistics for continuous sleep instrument scores.",
+  align = c("l", rep("r", 9))
+)
+```
+
+# Figures
+
+## Prevalence bar graph
+
+```{r prevalence-graph,echo=FALSE,fig.cap="Figure 1. Prevalence of sleep disturbance according to the ESS, PSQI, AIS, and BSS. Error bars represent exact 95% binomial confidence intervals."}
+prevalence_graph <- prevalence_results %>%
+  mutate(
+    Instrument = factor(
+      Instrument,
+      levels = c("ESS", "PSQI", "AIS", "BSS")
+    )
+  )
+
+ggplot(
+  prevalence_graph,
+  aes(
+    x = Instrument,
+    y = Prevalence
+  )
+) +
+  geom_col(
+    width = 0.65,
+    fill = "steelblue"
+  ) +
+  geom_errorbar(
+    aes(
+      ymin = Lower_CI,
+      ymax = Upper_CI
+    ),
+    width = 0.15,
+    linewidth = 0.7
+  ) +
+  geom_text(
+    aes(
+      label = percent(
+        Prevalence,
+        accuracy = 0.1
+      )
+    ),
+    vjust = -0.7,
+    size = 4
+  ) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    limits = c(
+      0,
+      max(prevalence_graph$Upper_CI) + 0.10
+    ),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "Prevalence of Sleep Disturbance",
+    subtitle = "Comparison across four sleep instruments",
+    x = "Sleep instrument",
+    y = "Prevalence"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(face = "bold"),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+## Distribution of continuous sleep scores
+
+```{r continuous-histograms,echo=FALSE,fig.width=9, fig.height=6, fig.cap="Figure 2. Distributions of ESS, PSQI, and AIS continuous scores."}
+ggplot(
+  continuous_sleep_data,
+  aes(x = Score)
+) +
+  geom_histogram(
+    bins = 15,
+    fill = "steelblue",
+    color = "white",
+    na.rm = TRUE
+  ) +
+  facet_wrap(
+    ~ Instrument,
+    scales = "free_x"
+  ) +
+  labs(
+    title = "Distributions of Continuous Sleep Scores",
+    x = "Score",
+    y = "Number of participants"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+# Results
+
+## Prevalence estimates
+
+The prevalence of excessive daytime sleepiness according to the ESS was **`r round(ess_prevalence$Prevalence * 100, 1)`%** (`r ess_prevalence$Disturbed` of `r ess_prevalence$Available_N` participants; 95% CI: `r round(ess_prevalence$Lower_CI * 100, 1)`%–`r round(ess_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of poor sleep quality according to the PSQI was **`r round(psqi_prevalence$Prevalence * 100, 1)`%** (`r psqi_prevalence$Disturbed` of `r psqi_prevalence$Available_N` participants; 95% CI: `r round(psqi_prevalence$Lower_CI * 100, 1)`%–`r round(psqi_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of insomnia according to the AIS was **`r round(ais_prevalence$Prevalence * 100, 1)`%** (`r ais_prevalence$Disturbed` of `r ais_prevalence$Available_N` participants; 95% CI: `r round(ais_prevalence$Lower_CI * 100, 1)`%–`r round(ais_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of a high likelihood of sleep-disordered breathing according to the BSS was **`r round(bss_prevalence$Prevalence * 100, 1)`%** (`r bss_prevalence$Disturbed` of `r bss_prevalence$Available_N` participants; 95% CI: `r round(bss_prevalence$Lower_CI * 100, 1)`%–`r round(bss_prevalence$Upper_CI * 100, 1)`%).
+
+Among the four instruments, **`r prevalence_results$Instrument[which.max(prevalence_results$Prevalence)]` produced the highest prevalence estimate**, while **`r prevalence_results$Instrument[which.min(prevalence_results$Prevalence)]` produced the lowest prevalence estimate**.
+
+The difference between the highest and lowest prevalence estimates was approximately **`r round((max(prevalence_results$Prevalence) - min(prevalence_results$Prevalence)) * 100, 1)` percentage points**.
+
+## Continuous score results
+
+```{r create-continuous-values, echo=FALSE}
+ess_summary <- continuous_summary %>%
+  filter(Instrument == "ESS")
+
+psqi_summary <- continuous_summary %>%
+  filter(Instrument == "PSQI")
+
+ais_summary <- continuous_summary %>%
+  filter(Instrument == "AIS")
+```
+
+The mean ESS score was **`r ess_summary$Mean`** (SD = `r ess_summary$SD`), with a median of `r ess_summary$Median` and a range from `r ess_summary$Minimum` to `r ess_summary$Maximum`.
+
+The mean PSQI score was **`r psqi_summary$Mean`** (SD = `r psqi_summary$SD`), with a median of `r psqi_summary$Median` and a range from `r psqi_summary$Minimum` to `r psqi_summary$Maximum`.
+
+The mean AIS score was **`r ais_summary$Mean`** (SD = `r ais_summary$SD`), with a median of `r ais_summary$Median` and a range from `r ais_summary$Minimum` to `r ais_summary$Maximum`.
+
+# Interpretation
+
+The prevalence estimates differed across the four instruments. This discrepancy is expected because the instruments measure different aspects of sleep disturbance.
+
+The ESS focuses primarily on excessive daytime sleepiness, whereas the PSQI assesses overall sleep quality. The AIS focuses on symptoms of insomnia, and the BSS assesses the likelihood of sleep-disordered breathing. Therefore, a participant may meet the threshold for sleep disturbance on one instrument but not another.
+These findings indicate that sleep disturbance is common among liver transplant recipients, although the estimated prevalence depends on which aspect of sleep is being measured.
+
+The instrument with the highest prevalence is not necessarily the most accurate. Instead, it may identify a more common type of sleep disturbance in this group of patients. Similarly, an instrument with a lower prevalence may be measuring a more specific type of sleep problem. Therefore since the questionnaires measure different aspects of sleep disturbance differences in prevalence are expected and do not mean that one questionnaire is better or more accurate than another. Instead, they suggest that some types of sleep problems are more common than others in this group of patients.
+
+# Assumptions and Limitations
+
+Several assumptions and limitations should be considered when interpreting these findings.
+
+First, the binary classifications assume that the clinical thresholds appropriately identify sleep disturbance in post-liver transplant recipients. These cutoffs simplify continuous scores into disturbed and non-disturbed categories, which makes prevalence easy to interpret but results in some loss of information.
+
+Second, prevalence was calculated using complete observations separately for each instrument. Consequently, the denominator differs across instruments when missing data are present. Differences in prevalence may therefore reflect both differences in the constructs measured and differences in the participants with available data.
+
+Third, the sleep measures were based on self-reported questionnaires. Self-reported sleep symptoms may be affected by recall error, personal interpretation, or response bias. Therefore these measures do not replace objective clinical assessments.
+
+Fourth, the four instruments measure different aspects of sleep. Therefore, their prevalence estimates should be compared with caution because they do not measure exactly the same condition.
+
+Finally, this analysis is based on observational, cross-sectional data. It estimates the proportion of participants classified as having sleep disturbance at the time of questionnaire completion but cannot establish causal relationships.
+
+# Conclusion
+
+To conclude sleep disturbance was common among the post-liver transplant recipients, although its estimated prevalence varied across the four instruments. The differences indicate that each instrument measures a different aspect of sleep disturbance, which leads to different prevalence estimates
+
+Using several instruments provides a more comprehensive description of sleep health than relying on a single questionnaire. The results should be interpreted alongside the continuous score summaries, missing-data patterns, and the distinct purpose of each instrument.
+
+# Appendix
+
+## Individual exact binomial test outputs
+
+### ESS
+
+```{r ess-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$Excessive.daytime.sleepiness == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$Excessive.daytime.sleepiness
+    )
+  )
+)
+```
+
+### PSQI
+
+```{r psqi-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$Poor.sleep.quality == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$Poor.sleep.quality
+    )
+  )
+)
+```
+
+### AIS
+
+```{r ais-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$Insomnia == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$Insomnia
+    )
+  )
+)
+```
+
+### BSS
+
+```{r bss-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$Berlin.Sleepiness.Scale == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$Berlin.Sleepiness.Scale
+    )
+  )
+)
+```
