@@ -341,7 +341,7 @@ AIS and PSQI relate more strongly to MCS (mental) than PCS (physical). For insta
 
 Pearson and Spearman values are nearly identical everywhere, which tells us that the relationships are close to linear, hence model using linear regression.
 
-*note:* PSQI, ESS and AIS were not converted to binary variable and kept as continuous measurements for the correlation tests. The BSS is a binary variable and tested in part B.
+*note:* PSQI, ESS and AIS were not converted to binary variable and kept as continuous measurements for the correlation tests and for the linear regression models. The BSS is a binary variable and and used as such in the linear regression models. However, the binary cutoff versions of PSQI, ESS and AIS were using in Part B to compare mean QoL scores between "disturbed" vs. "not disturbed" groups using t-test and Wilcoxon rank-sum tests.
 
 *note:* The correlations in Part A and B were calculated based on an available case because each correlation only needs that one pair complete (one sleep variable + one QoL variable). Parts C-F operate on a complete cases
 
