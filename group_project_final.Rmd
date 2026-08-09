@@ -1339,7 +1339,7 @@ For the clinically-dichotomized measures, including BSS which is binary, we comp
 *Interpretation:*
 SF36_PCS: The histogram is left-skewed with a longer tail of low scores with most patients clustering around 40–55. The Q-Q plot follows the red reference line reasonably well through the middle, but curves away at both tails, especially the low end. This is indicates a mild-to-moderate departure from normality, not severe.
 
-SF36_MCS: The histogram is left-skewed, and more skewed than than PCS. Thehe mean (46.2) is below the median (49). The Q-Q plot shows a similar pattern with points on the line in the middle but curve away at the lower tail. Therefore, both QoL scores (MCS and PCS) are not normally distributed.
+SF36_MCS: The histogram is left-skewed, and more skewed than than PCS. The mean (46.2) is below the median (49). The Q-Q plot shows a similar pattern with points on the line in the middle but curve away at the lower tail. Therefore, both QoL scores (MCS and PCS) are not normally distributed.
 
 Since n = 247 for both (larger than n ≥ 30), the t-test is reasonably robust to this degree of non-normality. however, given the visible skew, the Wilcoxon test will be reported alongside the t-test as the non-parametric check.
 
