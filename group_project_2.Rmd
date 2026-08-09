@@ -360,9 +360,9 @@ cor_summary <- function(x, y, xname, yname, data) {
     Sleep_Measure = xname,
     QoL_Outcome = yname,
     Pearson_r = round(unname(pear$estimate), 3),
-    Pearson_p_val = signif(pear$p.value, 3),
+    Pearson_p_val = formatC(pear$p.value, format = "e", digits = 3),
     Spearman_rho = round(unname(spear$estimate), 3),
-    Spearman_p_val = signif(spear$p.value, 3)
+    Spearman_p_val = formatC(spear$p.value, format = "e", digits = 3)
   )
 }
 
@@ -466,8 +466,8 @@ group_compare <- function(group_var, outcome_var, data) {
     QoL_Outcome = outcome_var,
     Group1 = paste0(means[[group_var]][1], ": ", means$Mean[1], " (SD=", means$SD[1], ", n=", means$N[1], ")"),
     Group2 = paste0(means[[group_var]][2], ": ", means$Mean[2], " (SD=", means$SD[2], ", n=", means$N[2], ")"),
-    t_test_p = signif(t_res$p.value, 3),
-    wilcoxon_p = signif(w_res$p.value, 3)
+      t_test_p = formatC(t_res$p.value, format = "e", digits = 3),
+    wilcoxon_p = formatC(w_res$p.value, format = "e", digits = 3)
   )
 }
 
@@ -587,10 +587,12 @@ pcs_fit_table <- data.frame(
   N = c(nobs(pcs_psqi), nobs(pcs_ess), nobs(pcs_ais), nobs(pcs_bss)),
   Sleep_Coefficient = c(coef(pcs_psqi)["PSQI"], coef(pcs_ess)["ESS"],
                         coef(pcs_ais)["AIS"], coef(pcs_bss)["BSSDisturbance"]),
-  P_value = c(summary(pcs_psqi)$coefficients["PSQI", 4],
+  
+  P_value = formatC(c(summary(pcs_psqi)$coefficients["PSQI", 4],
               summary(pcs_ess)$coefficients["ESS", 4],
               summary(pcs_ais)$coefficients["AIS", 4],
-              summary(pcs_bss)$coefficients["BSSDisturbance", 4]),
+              summary(pcs_bss)$coefficients["BSSDisturbance", 4]), format = "e", digits = 3),
+  
   Adj_R2 = c(summary(pcs_psqi)$adj.r.squared, summary(pcs_ess)$adj.r.squared,
              summary(pcs_ais)$adj.r.squared, summary(pcs_bss)$adj.r.squared))
 
@@ -661,10 +663,12 @@ mcs_fit_table <- data.frame(
   N = c(nobs(mcs_psqi), nobs(mcs_ess), nobs(mcs_ais), nobs(mcs_bss)),
   Sleep_Coefficient = c(coef(mcs_psqi)["PSQI"], coef(mcs_ess)["ESS"],
                         coef(mcs_ais)["AIS"], coef(mcs_bss)["BSSDisturbance"]),
-  P_value = c(summary(mcs_psqi)$coefficients["PSQI", 4],
+  
+  P_value = formatC(c(summary(mcs_psqi)$coefficients["PSQI", 4],
               summary(mcs_ess)$coefficients["ESS", 4],
               summary(mcs_ais)$coefficients["AIS", 4],
-              summary(mcs_bss)$coefficients["BSSDisturbance", 4]),
+              summary(mcs_bss)$coefficients["BSSDisturbance", 4]), format = "e", digits = 3),
+  
   Adj_R2 = c(summary(mcs_psqi)$adj.r.squared, summary(mcs_ess)$adj.r.squared,
              summary(mcs_ais)$adj.r.squared, summary(mcs_bss)$adj.r.squared)
 )

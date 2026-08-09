@@ -11,7 +11,7 @@
 
 <meta name="author" content="Ranmali Attapattu, Raiyan Raza, Vinusiya Vigneswararajah" />
 
-<meta name="date" content="2026-08-01" />
+<meta name="date" content="2026-08-08" />
 
 <title>Group Project Question 2</title>
 
@@ -1482,7 +1482,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Group Project Question 2</h1>
 <h4 class="author">Ranmali Attapattu, Raiyan Raza, Vinusiya
 Vigneswararajah</h4>
-<h4 class="date">2026-08-01</h4>
+<h4 class="date">2026-08-08</h4>
 
 </div>
 
@@ -2302,9 +2302,9 @@ cor_summary &lt;- function(x, y, xname, yname, data) {
     Sleep_Measure = xname,
     QoL_Outcome = yname,
     Pearson_r = round(unname(pear$estimate), 3),
-    Pearson_p_val = signif(pear$p.value, 3),
+    Pearson_p_val = formatC(pear$p.value, format = &quot;e&quot;, digits = 3),
     Spearman_rho = round(unname(spear$estimate), 3),
-    Spearman_p_val = signif(spear$p.value, 3)
+    Spearman_p_val = formatC(spear$p.value, format = &quot;e&quot;, digits = 3)
   )
 }
 
@@ -2350,9 +2350,9 @@ disturbance measures and SF-36 QoL scores</caption>
 <th align="left">Sleep_Measure</th>
 <th align="left">QoL_Outcome</th>
 <th align="right">Pearson_r</th>
-<th align="right">Pearson_p_val</th>
+<th align="left">Pearson_p_val</th>
 <th align="right">Spearman_rho</th>
-<th align="right">Spearman_p_val</th>
+<th align="left">Spearman_p_val</th>
 </tr>
 </thead>
 <tbody>
@@ -2360,49 +2360,49 @@ disturbance measures and SF-36 QoL scores</caption>
 <td align="left">PSQI</td>
 <td align="left">SF36_PCS</td>
 <td align="right">-0.346</td>
-<td align="right">2.8e-06</td>
+<td align="left">2.813e-06</td>
 <td align="right">-0.355</td>
-<td align="right">1.4e-06</td>
+<td align="left">1.414e-06</td>
 </tr>
 <tr class="even">
 <td align="left">PSQI</td>
 <td align="left">SF36_MCS</td>
 <td align="right">-0.548</td>
-<td align="right">0.0e+00</td>
+<td align="left">4.120e-15</td>
 <td align="right">-0.549</td>
-<td align="right">0.0e+00</td>
+<td align="left">3.645e-15</td>
 </tr>
 <tr class="odd">
 <td align="left">ESS</td>
 <td align="left">SF36_PCS</td>
 <td align="right">-0.291</td>
-<td align="right">5.9e-06</td>
+<td align="left">5.861e-06</td>
 <td align="right">-0.316</td>
-<td align="right">8.0e-07</td>
+<td align="left">8.201e-07</td>
 </tr>
 <tr class="even">
 <td align="left">ESS</td>
 <td align="left">SF36_MCS</td>
 <td align="right">-0.299</td>
-<td align="right">3.3e-06</td>
+<td align="left">3.255e-06</td>
 <td align="right">-0.292</td>
-<td align="right">5.7e-06</td>
+<td align="left">5.734e-06</td>
 </tr>
 <tr class="odd">
 <td align="left">AIS</td>
 <td align="left">SF36_PCS</td>
 <td align="right">-0.409</td>
-<td align="right">0.0e+00</td>
+<td align="left">2.748e-11</td>
 <td align="right">-0.420</td>
-<td align="right">0.0e+00</td>
+<td align="left">6.728e-12</td>
 </tr>
 <tr class="even">
 <td align="left">AIS</td>
 <td align="left">SF36_MCS</td>
 <td align="right">-0.523</td>
-<td align="right">0.0e+00</td>
+<td align="left">1.333e-18</td>
 <td align="right">-0.527</td>
-<td align="right">0.0e+00</td>
+<td align="left">6.660e-19</td>
 </tr>
 </tbody>
 </table>
@@ -2507,8 +2507,8 @@ group_compare &lt;- function(group_var, outcome_var, data) {
     QoL_Outcome = outcome_var,
     Group1 = paste0(means[[group_var]][1], &quot;: &quot;, means$Mean[1], &quot; (SD=&quot;, means$SD[1], &quot;, n=&quot;, means$N[1], &quot;)&quot;),
     Group2 = paste0(means[[group_var]][2], &quot;: &quot;, means$Mean[2], &quot; (SD=&quot;, means$SD[2], &quot;, n=&quot;, means$N[2], &quot;)&quot;),
-    t_test_p = signif(t_res$p.value, 3),
-    wilcoxon_p = signif(w_res$p.value, 3)
+      t_test_p = formatC(t_res$p.value, format = &quot;e&quot;, digits = 3),
+    wilcoxon_p = formatC(w_res$p.value, format = &quot;e&quot;, digits = 3)
   )
 }
 
@@ -2518,7 +2518,7 @@ group_results &lt;- do.call(rbind, lapply(binary_sleep_vars, function(s) {
 
 kable(group_results,
       caption = &quot;Comparison of SF-36 PCS/MCS scores across binary sleep disturbance classifications (t-test and Wilcoxon)&quot;)</code></pre>
-<table style="width:100%;">
+<table>
 <caption>Comparison of SF-36 PCS/MCS scores across binary sleep
 disturbance classifications (t-test and Wilcoxon)</caption>
 <colgroup>
@@ -2526,7 +2526,7 @@ disturbance classifications (t-test and Wilcoxon)</caption>
 <col width="9%" />
 <col width="30%" />
 <col width="33%" />
-<col width="6%" />
+<col width="7%" />
 <col width="8%" />
 </colgroup>
 <thead>
@@ -2535,8 +2535,8 @@ disturbance classifications (t-test and Wilcoxon)</caption>
 <th align="left">QoL_Outcome</th>
 <th align="left">Group1</th>
 <th align="left">Group2</th>
-<th align="right">t_test_p</th>
-<th align="right">wilcoxon_p</th>
+<th align="left">t_test_p</th>
+<th align="left">wilcoxon_p</th>
 </tr>
 </thead>
 <tbody>
@@ -2545,64 +2545,64 @@ disturbance classifications (t-test and Wilcoxon)</caption>
 <td align="left">SF36_PCS</td>
 <td align="left">Adequate quality: 49.26 (SD=9.57, n=62)</td>
 <td align="left">Poor sleep quality: 41.53 (SD=12.44, n=113)</td>
-<td align="right">9.40e-06</td>
-<td align="right">3.10e-05</td>
+<td align="left">9.403e-06</td>
+<td align="left">3.096e-05</td>
 </tr>
 <tr class="even">
 <td align="left">PSQI_quality</td>
 <td align="left">SF36_MCS</td>
 <td align="left">Adequate quality: 54.68 (SD=7.35, n=62)</td>
 <td align="left">Poor sleep quality: 43.01 (SD=12.07, n=113)</td>
-<td align="right">0.00e+00</td>
-<td align="right">0.00e+00</td>
+<td align="left">2.525e-13</td>
+<td align="left">4.182e-10</td>
 </tr>
 <tr class="odd">
 <td align="left">ESS_disturbance</td>
 <td align="left">SF36_PCS</td>
 <td align="left">No disturbance: 45.3 (SD=11.65, n=170)</td>
 <td align="left">Disturbance: 37.28 (SD=11.9, n=64)</td>
-<td align="right">1.02e-05</td>
-<td align="right">3.90e-06</td>
+<td align="left">1.020e-05</td>
+<td align="left">3.920e-06</td>
 </tr>
 <tr class="even">
 <td align="left">ESS_disturbance</td>
 <td align="left">SF36_MCS</td>
 <td align="left">No disturbance: 48.09 (SD=11.8, n=170)</td>
 <td align="left">Disturbance: 42.06 (SD=12.46, n=64)</td>
-<td align="right">1.12e-03</td>
-<td align="right">9.07e-04</td>
+<td align="left">1.122e-03</td>
+<td align="left">9.070e-04</td>
 </tr>
 <tr class="odd">
 <td align="left">AIS_insomnia</td>
 <td align="left">SF36_PCS</td>
 <td align="left">No insomnia: 47.32 (SD=10.48, n=108)</td>
 <td align="left">Insomnia: 39.81 (SD=12.23, n=137)</td>
-<td align="right">5.00e-07</td>
-<td align="right">7.00e-07</td>
+<td align="left">4.827e-07</td>
+<td align="left">6.833e-07</td>
 </tr>
 <tr class="even">
 <td align="left">AIS_insomnia</td>
 <td align="left">SF36_MCS</td>
 <td align="left">No insomnia: 52.67 (SD=8.22, n=108)</td>
 <td align="left">Insomnia: 41.11 (SD=12.38, n=137)</td>
-<td align="right">0.00e+00</td>
-<td align="right">0.00e+00</td>
+<td align="left">4.055e-16</td>
+<td align="left">3.588e-13</td>
 </tr>
 <tr class="odd">
 <td align="left">BSS</td>
 <td align="left">SF36_PCS</td>
 <td align="left">No disturbance: 45.53 (SD=10.79, n=149)</td>
 <td align="left">Disturbance: 39.16 (SD=12.81, n=96)</td>
-<td align="right">8.06e-05</td>
-<td align="right">7.09e-05</td>
+<td align="left">8.064e-05</td>
+<td align="left">7.092e-05</td>
 </tr>
 <tr class="even">
 <td align="left">BSS</td>
 <td align="left">SF36_MCS</td>
 <td align="left">No disturbance: 47.59 (SD=11.47, n=149)</td>
 <td align="left">Disturbance: 43.84 (SD=12.9, n=96)</td>
-<td align="right">2.17e-02</td>
-<td align="right">3.33e-02</td>
+<td align="left">2.165e-02</td>
+<td align="left">3.331e-02</td>
 </tr>
 </tbody>
 </table>
@@ -2659,13 +2659,7 @@ actual sleep quality (rather than at random), then the PSQI-based models
 (n=155) could be biased in a way the AIS/ESS models aren’t. Therefore,
 probably best to keep PSQI but talk about it as a limitation to the
 model.</p>
-<pre class="r"><code># Using complete cases for regression models, so dropping rows that contain any
-# NAs in any of the 11 covariate columns.
-predictor_data &lt;- sleep_data %&gt;%
-  drop_na(age, gender, BMI, transplant_time, liver_diagnosis, recurrence,
-          graft_dysfunction, fibrosis, renal_failure, depression, corticosteroid)
-
-# Missingness in the sleep/QoL outcome variables themselves is NOT pre-filtered.
+<pre class="r"><code># Missingness in the sleep/QoL outcome variables themselves is NOT pre-filtered.
 # lm() performs listwise deletion automatically, using only the variables in
 # each specific formula. This means each of the 8 models in Parts C and D uses
 # all available patients for a particular sleep instrument + outcome
@@ -2842,10 +2836,12 @@ pcs_fit_table &lt;- data.frame(
   N = c(nobs(pcs_psqi), nobs(pcs_ess), nobs(pcs_ais), nobs(pcs_bss)),
   Sleep_Coefficient = c(coef(pcs_psqi)[&quot;PSQI&quot;], coef(pcs_ess)[&quot;ESS&quot;],
                         coef(pcs_ais)[&quot;AIS&quot;], coef(pcs_bss)[&quot;BSSDisturbance&quot;]),
-  P_value = c(summary(pcs_psqi)$coefficients[&quot;PSQI&quot;, 4],
+  
+  P_value = formatC(c(summary(pcs_psqi)$coefficients[&quot;PSQI&quot;, 4],
               summary(pcs_ess)$coefficients[&quot;ESS&quot;, 4],
               summary(pcs_ais)$coefficients[&quot;AIS&quot;, 4],
-              summary(pcs_bss)$coefficients[&quot;BSSDisturbance&quot;, 4]),
+              summary(pcs_bss)$coefficients[&quot;BSSDisturbance&quot;, 4]), format = &quot;e&quot;, digits = 3),
+  
   Adj_R2 = c(summary(pcs_psqi)$adj.r.squared, summary(pcs_ess)$adj.r.squared,
              summary(pcs_ais)$adj.r.squared, summary(pcs_bss)$adj.r.squared))
 
@@ -2867,7 +2863,7 @@ kable(pcs_fit_table, caption = &quot;Comparison of SF-36 PCS models across sleep
 <th align="left">Sleep_Measure</th>
 <th align="right">N</th>
 <th align="right">Sleep_Coefficient</th>
-<th align="right">P_value</th>
+<th align="left">P_value</th>
 <th align="right">Adj_R2</th>
 </tr>
 </thead>
@@ -2877,7 +2873,7 @@ kable(pcs_fit_table, caption = &quot;Comparison of SF-36 PCS models across sleep
 <td align="left">PSQI</td>
 <td align="right">155</td>
 <td align="right">-0.6956049</td>
-<td align="right">0.0008666</td>
+<td align="left">8.666e-04</td>
 <td align="right">0.1317668</td>
 </tr>
 <tr class="even">
@@ -2885,7 +2881,7 @@ kable(pcs_fit_table, caption = &quot;Comparison of SF-36 PCS models across sleep
 <td align="left">ESS</td>
 <td align="right">212</td>
 <td align="right">-0.6725325</td>
-<td align="right">0.0001929</td>
+<td align="left">1.929e-04</td>
 <td align="right">0.1347019</td>
 </tr>
 <tr class="odd">
@@ -2893,7 +2889,7 @@ kable(pcs_fit_table, caption = &quot;Comparison of SF-36 PCS models across sleep
 <td align="left">AIS</td>
 <td align="right">221</td>
 <td align="right">-0.8374166</td>
-<td align="right">0.0000000</td>
+<td align="left">3.768e-08</td>
 <td align="right">0.1958742</td>
 </tr>
 <tr class="even">
@@ -2901,7 +2897,7 @@ kable(pcs_fit_table, caption = &quot;Comparison of SF-36 PCS models across sleep
 <td align="left">BSS</td>
 <td align="right">220</td>
 <td align="right">-4.6147506</td>
-<td align="right">0.0083801</td>
+<td align="left">8.380e-03</td>
 <td align="right">0.1038464</td>
 </tr>
 </tbody>
@@ -3086,10 +3082,12 @@ mcs_fit_table &lt;- data.frame(
   N = c(nobs(mcs_psqi), nobs(mcs_ess), nobs(mcs_ais), nobs(mcs_bss)),
   Sleep_Coefficient = c(coef(mcs_psqi)[&quot;PSQI&quot;], coef(mcs_ess)[&quot;ESS&quot;],
                         coef(mcs_ais)[&quot;AIS&quot;], coef(mcs_bss)[&quot;BSSDisturbance&quot;]),
-  P_value = c(summary(mcs_psqi)$coefficients[&quot;PSQI&quot;, 4],
+  
+  P_value = formatC(c(summary(mcs_psqi)$coefficients[&quot;PSQI&quot;, 4],
               summary(mcs_ess)$coefficients[&quot;ESS&quot;, 4],
               summary(mcs_ais)$coefficients[&quot;AIS&quot;, 4],
-              summary(mcs_bss)$coefficients[&quot;BSSDisturbance&quot;, 4]),
+              summary(mcs_bss)$coefficients[&quot;BSSDisturbance&quot;, 4]), format = &quot;e&quot;, digits = 3),
+  
   Adj_R2 = c(summary(mcs_psqi)$adj.r.squared, summary(mcs_ess)$adj.r.squared,
              summary(mcs_ais)$adj.r.squared, summary(mcs_bss)$adj.r.squared)
 )
@@ -3111,7 +3109,7 @@ kable(mcs_fit_table, caption = &quot;Comparison of SF-36 MCS models across sleep
 <th align="left">Sleep_Measure</th>
 <th align="right">N</th>
 <th align="right">Sleep_Coefficient</th>
-<th align="right">P_value</th>
+<th align="left">P_value</th>
 <th align="right">Adj_R2</th>
 </tr>
 </thead>
@@ -3121,7 +3119,7 @@ kable(mcs_fit_table, caption = &quot;Comparison of SF-36 MCS models across sleep
 <td align="left">PSQI</td>
 <td align="right">155</td>
 <td align="right">-1.2298221</td>
-<td align="right">0.0000000</td>
+<td align="left">3.576e-11</td>
 <td align="right">0.3844753</td>
 </tr>
 <tr class="even">
@@ -3129,7 +3127,7 @@ kable(mcs_fit_table, caption = &quot;Comparison of SF-36 MCS models across sleep
 <td align="left">ESS</td>
 <td align="right">212</td>
 <td align="right">-0.6546269</td>
-<td align="right">0.0001487</td>
+<td align="left">1.487e-04</td>
 <td align="right">0.2282978</td>
 </tr>
 <tr class="odd">
@@ -3137,7 +3135,7 @@ kable(mcs_fit_table, caption = &quot;Comparison of SF-36 MCS models across sleep
 <td align="left">AIS</td>
 <td align="right">221</td>
 <td align="right">-1.0968345</td>
-<td align="right">0.0000000</td>
+<td align="left">9.520e-15</td>
 <td align="right">0.3711067</td>
 </tr>
 <tr class="even">
@@ -3145,7 +3143,7 @@ kable(mcs_fit_table, caption = &quot;Comparison of SF-36 MCS models across sleep
 <td align="left">BSS</td>
 <td align="right">220</td>
 <td align="right">-2.8465646</td>
-<td align="right">0.0942802</td>
+<td align="left">9.428e-02</td>
 <td align="right">0.1733452</td>
 </tr>
 </tbody>
