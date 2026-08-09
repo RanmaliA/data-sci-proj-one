@@ -1,0 +1,1847 @@
+---
+title: "Sleep Disturbance in Patients with Liver Transplants and Its Relationship to Quality of Life"
+author: "Ranmali Attapattu, Raiyan Raza, Jeny Patel, Saadana Balasubramanian, Vinusiya Vigneswararajah"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true 
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+
+# Data Exploration and Cleaning
+
+This section of the code focuses on the initial cleaning & familiarization of the data for later analysis.
+This analysis uses the following packages:
+
+```{r load-data, results='hide', message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
+library(scales)
+library(car)
+
+project_data <- read.csv("project_data.csv")
+```
+
+### Initial Check
+```{r initial-check, results='hide'}
+head(project_data)
+dim(project_data)
+str(project_data)
+summary(project_data)
+sum(duplicated(project_data))
+
+```
+An initial exploration of the dataset showed that it contains **268 observations** and a mix of *demographic, clinical, medication,* and *patient-reported* outcome variables. No duplicate observations were identified. Most clinical variables were complete, while BMI (23 missing values) and several questionnaire-based measures exhibited missingness. In particular, the Pittsburgh Sleep Quality Index (85 missing values), Epworth Sleepiness Scale (17 missing values before cleaning), Athens Insomnia Scale (6), Berlin Sleepiness Scale (6), and SF-36 quality-of-life measures (21 each) contained incomplete observations. Additionally, **six variables (X.1–X.6)** contained *only missing values* and appear to be empty columns and were removed from the analysis subset as they contained no information.
+
+Range checks were performed to identify potential data entry errors or implausible values. Demographic variables, clinical characteristics, sleep measures, and quality of life scores were within expected ranges. One observation had an **Epworth Sleepiness Scale (ESS)** value of 26, which exceeded the commonly accepted scoring range of 0–24. Because this value could not be verified and was outside the valid range, it was treated as missing for subsequent analyses.
+```{r ess-correction, results='hide'}
+
+project_data <- project_data %>%
+  mutate(
+    Epworth.Sleepiness.Scale = ifelse(Epworth.Sleepiness.Scale > 24, NA, Epworth.Sleepiness.Scale)
+  )
+
+```
+Initial summary statistics indicate that participants ranged in age from 18 to 80 years (mean = 52.78 years), with an average BMI of 27.02 kg/m² among those with recorded values. The average time since transplant was 6.49 years, ranging from 0.08 to 23.02 years. Overall, the dataset appears well suited for analysis, although variables with substantial missing data will require careful handling before conducting statistical analyses.
+
+## Cleaning
+Given the large number of variables in the original dataset, only variables relevant to the research questions were retained. Variable labels and coding were recoded according to the data dictionary.
+```{r subsetting, echo=FALSE}
+sleep_data <- project_data %>%
+  dplyr::select(
+    Age,
+    Gender,
+    BMI,
+    Time.from.transplant,
+    Liver.Diagnosis,
+    Recurrence.of.disease,
+    Rejection.graft.dysfunction,
+    Any.fibrosis,
+    Renal.Failure,
+    Depression,
+    Corticoid,
+    Epworth.Sleepiness.Scale,
+    Excessive.daytime.sleepiness,
+    Pittsburgh.Sleep.Quality.Index.Score,
+    Poor.sleep.quality,
+    Berlin.Sleepiness.Scale,
+    Insomnia,
+    Athens.Insomnia.Scale,
+    SF36.PCS,
+    SF36.MCS
+  )
+
+sleep_data <- sleep_data %>%
+  rename(
+    age = Age,
+    gender = Gender,
+    transplant_time = Time.from.transplant,
+    liver_diagnosis = Liver.Diagnosis,
+    recurrence = Recurrence.of.disease,
+    graft_dysfunction = Rejection.graft.dysfunction,
+    fibrosis = Any.fibrosis,
+    renal_failure = Renal.Failure,
+    depression = Depression,
+    corticosteroid = Corticoid,
+    ESS = Epworth.Sleepiness.Scale,
+    ESS_disturbance = Excessive.daytime.sleepiness,
+    PSQI = Pittsburgh.Sleep.Quality.Index.Score,
+    PSQI_quality = Poor.sleep.quality,
+    BSS = Berlin.Sleepiness.Scale,
+    AIS = Athens.Insomnia.Scale,
+    AIS_insomnia = Insomnia,
+    SF36_PCS = SF36.PCS,
+    SF36_MCS = SF36.MCS
+  )
+```
+
+
+### Recoding Demographic and Clinical Variables
+```{r recoding}
+sleep_data$gender = factor(sleep_data$gender,
+                levels = c(1, 2),
+                labels = c("Male", "Female"))
+
+sleep_data$liver_diagnosis = factor(sleep_data$liver_diagnosis,
+                         levels = c(1, 2, 3, 4, 5),
+                         labels = c("Hep C", "Hep B", "PSC/PBC/AHA", "alcohol", "other"))
+
+sleep_data$recurrence = factor(sleep_data$recurrence,
+                    levels = c(0, 1),
+                    labels = c("No", "Yes"))
+
+sleep_data$graft_dysfunction = factor(sleep_data$graft_dysfunction,
+                           levels = c(0, 1),
+                           labels = c("No", "Yes"))
+                         
+sleep_data$fibrosis = factor(sleep_data$fibrosis,
+                             levels = c(0, 1),
+                             labels = c("No", "Yes"))
+
+sleep_data$renal_failure = factor(sleep_data$renal_failure,
+                                  levels = c(0, 1),
+                                  labels = c("No", "Yes"))
+
+sleep_data$depression = factor(sleep_data$depression,
+                               levels = c(0, 1),
+                               labels = c("No", "Yes"))
+
+sleep_data$corticosteroid = factor(sleep_data$corticosteroid,
+                                   levels = c(0, 1),
+                                   labels = c("No", "Yes"))
+
+```
+
+After re-coding, the demographic data is easier to interpret.
+
+```{r table1, results='asis', echo=FALSE, fig.align='centre'}
+kable(sleep_data[1:5,], caption = "First five observations of the analysis subset, with variables renamed for clarity.")
+```
+
+### Recoding Sleep Disturbance Variables
+In order to accommodate multiple analysis angles, sleep disturbance was stored using both the **continuous** questionnaire scores and the derived, clinically meaningful **binary** classifications. Continuous scores were retained to assess the severity of sleep symptoms and their relationship with health-related quality of life. Binary sleep disturbance variables support prevalence estimation & logistic regression analyses. The original dataset already includes binary sleep disturbance variables for each of the 4 measures. However, In the original dataset, the binary variable Poor.sleep.quality does not match the data dictionary criteria for the Pittsburgh Sleep Quality Index (it should be greater than 4 indicating poor sleep quality). To account for this and any other potential errors, this section re-codes the binary sleep quality variables using the correct criteria.
+
+## Sleep disturbance definitions
+
+The following clinical cutoffs were used:
+ESS greater than 10 indicates excessive daytime sleepiness.
+PSQI greater than 4 indicates poor sleep quality.
+AIS greater than 5 indicates insomnia.
+BSS equal to 1 indicates a high likelihood of sleep-disordered breathing.
+
+| Instrument | Continuous variable | Binary variable |
+|:--|:--|:--|
+| ESS | `Epworth.Sleepiness.Scale` | `Excessive.daytime.sleepiness` |
+| PSQI | `Pittsburgh.Sleep.Quality.Index.Score` | `Poor.sleep.quality` |
+| AIS | `Athens.Insomnia.Scale` | `Insomnia` |
+| BSS | Not applicable | `Berlin.Sleepiness.Scale` |
+```{r binary-vars}
+
+# Recalculate binary sleep quality variables directly from continuous measures using data dictionary cutoffs
+sleep_data <- sleep_data %>%
+  mutate(
+    PSQI_quality = factor(
+      ifelse(is.na(PSQI), NA, ifelse(PSQI > 4, "Poor sleep quality", "Adequate quality")),
+      levels = c("Adequate quality", "Poor sleep quality")
+    ),
+    ESS_disturbance = factor(
+      ifelse(is.na(ESS), NA, ifelse(ESS > 10, "Disturbance", "No disturbance")),
+      levels = c("No disturbance", "Disturbance")
+    ),
+    AIS_insomnia = factor(
+      ifelse(is.na(AIS), NA, ifelse(AIS > 5, "Insomnia", "No insomnia")),
+      levels = c("No insomnia", "Insomnia")
+    ),
+    BSS = factor(
+      ifelse(is.na(BSS), NA, ifelse(BSS == 1, "Disturbance", "No disturbance")),
+      levels = c("No disturbance", "Disturbance")
+    )
+  )
+
+binary_vars <- sleep_data[, c("PSQI_quality", "ESS_disturbance", "AIS_insomnia", "BSS")]
+
+kable(binary_vars[1:5,], caption = "Binary sleep disturbance variables (first 5 rows)")
+
+```
+
+###  Missing Values
+Several variables had minimal missingness (<10%), while questionnaire-based measures showed higher levels of missing data, particularly PSQI (31.7%). Since removing all observations with missing values would substantially reduce the sample size and potentially introduce bias, analyses were performed using available cases for each outcome measure.
+```{r missing_values, echo=FALSE, results='asis'}
+kable(colSums(is.na(sleep_data)), col.names = c("Variable", "Missing Value Count"), caption = "A summary of all missing values in the analysis subset.")
+```
+Although regression models require complete datasets, retaining all available observations maximizes statistical power and avoids unnecessary loss of information. Regression analyses involving predictor variables requiring complete data were conducted using the `predictor_data` subset, while descriptive analyses used all available observations in the `sleep_data` subset.
+```{r predictor_data}
+predictor_data <- sleep_data %>%
+  drop_na(age, gender, BMI, transplant_time, 
+          liver_diagnosis, recurrence,
+          graft_dysfunction, fibrosis,
+          renal_failure, depression,
+          corticosteroid)
+```
+
+## Summary Statistics
+### Demographic and Clinical Characteristics
+
+Continuous demographic and clinical variables are summarized using mean, standard deviation (SD), median, minimum, maximum, and missing values. The mean participant age is 52.78 years. The mean BMI is 27.02 kg/m^2. The mean time since liver transplant is 6.49 years.
+
+```{r summary-demo-cont, echo=FALSE, warning = FALSE}
+demo_cont_summary <- sleep_data %>%
+  summarise(
+    across(
+      c(age, BMI, transplant_time),
+      list(
+        N = ~sum(!is.na(.)),
+        Mean = ~round(mean(., na.rm = TRUE), 2),
+        SD = ~round(sd(., na.rm = TRUE), 2),
+        Median = ~round(median(., na.rm = TRUE), 2),
+        Min = ~round(min(., na.rm = TRUE), 2),
+        Max = ~round(max(., na.rm = TRUE), 2),
+        Missing = ~sum(is.na(.))
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  ) %>%
+  pivot_longer(everything(), names_to = c("Variable", "Metric"), names_pattern = "(.*)_(.*)") %>%
+  pivot_wider(names_from = Metric, values_from = value) %>%
+  mutate(Variable = case_when(
+    Variable == "age" ~ "Age (years)",
+    Variable == "BMI" ~ "Body Mass Index (kg/m^2)",
+    Variable == "transplant_time" ~ "Time Since Transplant (years)"
+  ))
+
+kable(demo_cont_summary, caption = "Summary Statistics for Continuous Demographic and Clinical Variables")
+```
+The categorical variables are summarized here by their category (level) counts and percentages. There are more males in the dataset than females (64.6% vs 35.4%). Liver diagnoses vary greatly, but the most common category is 'PSC/PBC/AHA' (28%). Disease recurrence occurred in 23.9% of patients. Graft dysfunction occurred in 25.7% of patients. Fibrosis occurred in 15.7% of patients. Renal Failure occurred in 1.5% of patients. Depression occurred in 21.3% of patients. Corticosteroid use happened in 31.7% of patients.
+
+```{r categorical_summary, echo = FALSE, warning = FALSE}
+cat_vars <- c("gender", "liver_diagnosis", "recurrence", "graft_dysfunction", "fibrosis", "renal_failure", "depression", "corticosteroid")
+
+cat_summary_list <- lapply(cat_vars, function(var) {
+  sleep_data %>%
+    group_by(Category = as.character(.data[[var]])) %>%
+    summarise(Count = n(), .groups = "drop") %>%
+    mutate(
+      Variable = var,
+      Percentage = round((Count / sum(Count)) * 100, 1)
+    )
+})
+
+demo_cat_summary <- bind_rows(cat_summary_list) %>%
+  dplyr::select(Variable, Category, Count, Percentage)
+
+kable(demo_cat_summary, caption = "Frequency Distributions for Demographic Categorical and Clinical Variables")
+```
+
+---
+
+## Descriptive Statistics 
+
+### Continuous Sleep and QoL Measures
+Summary statistics for the continuous sleep instruments (`PSQI`, `ESS`, `AIS`, `BSS`) and QoL scores (`SF36_PCS` and `SF36_MCS`). The mean Pittsburgh Sleep Quality Index (PSQI) is 7.38, which is above the poor sleep quality threshold of 4. The mean Epworth Sleepiness Scale (ESS)	is 7.76, which is below the sleep disturbance threshold of 10. The mean Athens Insomnia Scale (AIS) is 7.41, which is above the insomnia threshold of 5. The mean SF-36 Physical Component Summary (PCS)	is 43.05 and the mean SF-36 Mental Component Summary is 46.22. 
+
+```{r summary-sleep-qol-cont, echo=FALSE, warning = FALSE}
+sleep_qol_cont_summary <- sleep_data %>%
+  summarise(
+    across(
+      c(PSQI, ESS, AIS, SF36_PCS, SF36_MCS),
+      list(
+        N = ~sum(!is.na(.)),
+        Mean = ~round(mean(., na.rm = TRUE), 2),
+        SD = ~round(sd(., na.rm = TRUE), 2),
+        Median = ~round(median(., na.rm = TRUE), 2),
+        IQR = ~round(IQR(., na.rm = TRUE), 2),
+        Min = ~round(min(., na.rm = TRUE), 2),
+        Max = ~round(max(., na.rm = TRUE), 2),
+        Missing = ~sum(is.na(.))
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  ) %>%
+  pivot_longer(everything(), names_to = c("Measure", "Metric"), names_pattern = "(.*)_(.*)") %>%
+  pivot_wider(names_from = Metric, values_from = value) %>%
+  mutate(Measure = case_when(
+    Measure == "PSQI" ~ "Pittsburgh Sleep Quality Index (PSQI)",
+    Measure == "ESS" ~ "Epworth Sleepiness Scale (ESS)",
+    Measure == "AIS" ~ "Athens Insomnia Scale (AIS)",
+    Measure == "BSS" ~ "Berlin Sleepiness Scale (BSS)",
+    Measure == "SF36_PCS" ~ "SF-36 Physical Component Summary (PCS)",
+    Measure == "SF36_MCS" ~ "SF-36 Mental Component Summary (MCS)"
+  ))
+
+kable(sleep_qol_cont_summary, caption = "Summary Statistics for Continuous Sleep Disturbance and QoL Measures")
+```
+
+### Distribution of Quality of Life Measures
+```{r fig-qol-histograms, echo=FALSE, warning = FALSE}
+qol_long <- sleep_data %>%
+  dplyr::select(SF36_PCS, SF36_MCS) %>%
+  pivot_longer(cols = everything(), names_to = "Component", values_to = "Score") %>%
+  mutate(Component = ifelse(Component == "SF36_PCS", "Physical Component Summary (PCS)", "Mental Component Summary (MCS)"))
+
+ggplot(qol_long, aes(x = Score)) +
+  geom_histogram(binwidth = 3, fill = "gray70", color = "black") +
+  facet_wrap(~ Component, scales = "free") +
+  theme_bw() +
+  labs(
+    title = "Distributions of Health-Related Quality of Life Scores (SF-36)",
+    x = "Score (Higher = Better Quality of Life)",
+    y = "Count"
+  )
+```
+
+# Prevalence of Sleep Disturbance
+
+## Purpose
+
+The purpose of this section is to estimate the prevalence of sleep disturbance among post-liver transplant recipients using the four sleep instruments: the Epworth Sleepiness Scale (ESS), Pittsburgh Sleep Quality Index (PSQI), Athens Insomnia Scale (AIS), and Berlin Sleepiness Scale (BSS).
+
+Prevalence estimates are calculated using the binary classifications of each instrument. Continuous ESS, PSQI, and AIS scores are also summarized to describe the distributions and severity of sleep-related symptoms.
+
+## Methods
+
+Prevalence was calculated separately for each sleep instrument by dividing the number of participants classified as having sleep disturbance by the number of participants with non-missing data for that instrument. Participants with missing values were excluded only from the calculation involving the affected instrument.
+
+Exact binomial 95% confidence intervals were calculated for each prevalence estimate using the `binom.test()` function in R. ESS, PSQI, and AIS were also summarized as continuous scores using the number of complete observations, mean, standard deviation, median, first and third quartiles, minimum, and maximum.
+
+The prevalence estimates were compared using a bar graph with 95% confidence interval error bars. 
+
+## Prevalence Analysis
+
+### Check the coding of binary variables
+
+Before calculating prevalence, the frequency of each binary outcome was examined.
+
+```{r check-binary-coding, echo=FALSE}
+table(
+  sleep_data$ESS_disturbance,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$PSQI_quality,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$AIS_insomnia,
+  useNA = "ifany"
+)
+
+table(
+  sleep_data$BSS,
+  useNA = "ifany"
+)
+```
+
+Excessive daytime sleepiness (ESS): 201 participants were classified as not having excessive daytime sleepiness (0), while 67 were classified as having excessive daytime sleepiness (1).
+
+Poor sleep quality (PSQI): 151 participants had good sleep quality (0) and 117 had poor sleep quality (1).
+
+Insomnia (AIS): 123 participants did not meet the criteria for insomnia (0), whereas 145 met the criteria for insomnia (1).
+
+Berlin Sleepiness Scale (BSS): 160 participants had a low likelihood of sleep-disordered breathing (0), 102 had a high likelihood (1), and 6 had missing values.
+
+The binary variables should contain:
+
+- `0` for no sleep disturbance;
+- `1` for sleep disturbance;
+- `NA` for missing information.
+
+## Function for prevalence and confidence intervals
+
+```{r prevalence-function, echo=FALSE}
+
+calculate_prevalence <- function(variable, instrument_name, disturbance_level = "Disturbance") {
+  
+  # Remove missing observations
+  available_values <- variable[!is.na(variable)]
+  
+  # Count participants with sleep disturbance 
+  disturbed <- sum(available_values == disturbance_level | available_values == "Insomnia" | available_values == "Poor sleep quality" | available_values == 1)
+  
+  # Count participants with available data
+  total <- length(available_values)
+  
+  # Exact binomial confidence interval
+  ci_result <- binom.test(
+    x = disturbed,
+    n = total,
+    conf.level = 0.95
+  )
+  
+  data.frame(
+    Instrument = instrument_name,
+    Disturbed = disturbed,
+    Available_N = total,
+    Missing = sum(is.na(variable)),
+    Prevalence = disturbed / total,
+    Lower_CI = ci_result$conf.int[1],
+    Upper_CI = ci_result$conf.int[2]
+  )
+}
+```
+
+## Calculate prevalence for all four instruments
+
+```{r calculate-prevalence, echo=FALSE}
+ess_prevalence <- calculate_prevalence(
+  sleep_data$ESS_disturbance,
+  "ESS"
+)
+
+psqi_prevalence <- calculate_prevalence(
+  sleep_data$PSQI_quality,
+  "PSQI"
+)
+
+ais_prevalence <- calculate_prevalence(
+  sleep_data$AIS_insomnia,
+  "AIS"
+)
+
+bss_prevalence <- calculate_prevalence(
+  sleep_data$BSS,
+  "BSS"
+)
+
+prevalence_results <- bind_rows(
+  ess_prevalence,
+  psqi_prevalence,
+  ais_prevalence,
+  bss_prevalence
+)
+
+prevalence_results
+```
+
+## Format the prevalence table
+
+```{r prevalence-table, echo=FALSE}
+prevalence_table <- prevalence_results %>%
+  mutate(
+    `Prevalence (%)` = round(Prevalence * 100, 1),
+    `95% CI` = paste0(
+      round(Lower_CI * 100, 1),
+      "%–",
+      round(Upper_CI * 100, 1),
+      "%"
+    )
+  ) %>%
+  select(
+    Instrument,
+    Disturbed,
+    Available_N,
+    Missing,
+    `Prevalence (%)`,
+    `95% CI`
+  )
+
+kable(
+  prevalence_table,
+  caption = "Table 1. Prevalence of sleep disturbance according to four sleep instruments.",
+  align = c("l", "r", "r", "r", "r", "c"),
+  col.names = c(
+    "Instrument",
+    "Sleep disturbance, n",
+    "Available N",
+    "Missing, n",
+    "Prevalence (%)",
+    "95% CI"
+  )
+)
+```
+
+## Continuous Sleep Score Summaries
+
+BSS was not included in the continuous summary because it is a binary measure in this dataset.
+
+### Convert the continuous scores into long format
+
+```{r continuous-data, echo=FALSE}
+continuous_sleep_data <- sleep_data %>%
+  select(
+    ESS = ESS,
+    PSQI = PSQI,
+    AIS = AIS
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Instrument",
+    values_to = "Score"
+  )
+```
+
+### Calculate descriptive statistics
+
+```{r continuous-summary,echo=FALSE}
+continuous_summary <- continuous_sleep_data %>%
+  group_by(Instrument) %>%
+  summarise(
+    Available_N = sum(!is.na(Score)),
+    Missing = sum(is.na(Score)),
+    Mean = mean(Score, na.rm = TRUE),
+    SD = sd(Score, na.rm = TRUE),
+    Median = median(Score, na.rm = TRUE),
+    Q1 = quantile(Score, 0.25, na.rm = TRUE),
+    Q3 = quantile(Score, 0.75, na.rm = TRUE),
+    Minimum = min(Score, na.rm = TRUE),
+    Maximum = max(Score, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    across(
+      c(Mean, SD, Median, Q1, Q3, Minimum, Maximum),
+      ~ round(.x, 2)
+    )
+  )
+
+kable(
+  continuous_summary,
+  caption = "Table 2. Descriptive statistics for continuous sleep instrument scores.",
+  align = c("l", rep("r", 9))
+)
+```
+
+## Figures
+
+### Prevalence bar graph
+
+```{r prevalence-graph,echo=FALSE,fig.cap="Figure 1. Prevalence of sleep disturbance according to the ESS, PSQI, AIS, and BSS. Error bars represent exact 95% binomial confidence intervals."}
+prevalence_graph <- prevalence_results %>%
+  mutate(
+    Instrument = factor(
+      Instrument,
+      levels = c("ESS", "PSQI", "AIS", "BSS")
+    )
+  )
+
+ggplot(
+  prevalence_graph,
+  aes(
+    x = Instrument,
+    y = Prevalence
+  )
+) +
+  geom_col(
+    width = 0.65,
+    fill = "steelblue"
+  ) +
+  geom_errorbar(
+    aes(
+      ymin = Lower_CI,
+      ymax = Upper_CI
+    ),
+    width = 0.15,
+    linewidth = 0.7
+  ) +
+  geom_text(
+    aes(
+      label = percent(
+        Prevalence,
+        accuracy = 0.1
+      )
+    ),
+    vjust = -0.7,
+    size = 4
+  ) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    limits = c(
+      0,
+      max(prevalence_graph$Upper_CI) + 0.10
+    ),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "Prevalence of Sleep Disturbance",
+    subtitle = "Comparison across four sleep instruments",
+    x = "Sleep instrument",
+    y = "Prevalence"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(face = "bold"),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+### Distribution of continuous sleep scores
+
+```{r continuous-histograms,echo=FALSE,fig.width=9, fig.height=6, fig.cap="Figure 2. Distributions of ESS, PSQI, and AIS continuous scores."}
+ggplot(
+  continuous_sleep_data,
+  aes(x = Score)
+) +
+  geom_histogram(
+    bins = 15,
+    fill = "steelblue",
+    color = "white",
+    na.rm = TRUE
+  ) +
+  facet_wrap(
+    ~ Instrument,
+    scales = "free_x"
+  ) +
+  labs(
+    title = "Distributions of Continuous Sleep Scores",
+    x = "Score",
+    y = "Number of participants"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+## Results
+
+### Prevalence estimates
+
+The prevalence of excessive daytime sleepiness according to the ESS was **`r round(ess_prevalence$Prevalence * 100, 1)`%** (`r ess_prevalence$Disturbed` of `r ess_prevalence$Available_N` participants; 95% CI: `r round(ess_prevalence$Lower_CI * 100, 1)`%–`r round(ess_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of poor sleep quality according to the PSQI was **`r round(psqi_prevalence$Prevalence * 100, 1)`%** (`r psqi_prevalence$Disturbed` of `r psqi_prevalence$Available_N` participants; 95% CI: `r round(psqi_prevalence$Lower_CI * 100, 1)`%–`r round(psqi_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of insomnia according to the AIS was **`r round(ais_prevalence$Prevalence * 100, 1)`%** (`r ais_prevalence$Disturbed` of `r ais_prevalence$Available_N` participants; 95% CI: `r round(ais_prevalence$Lower_CI * 100, 1)`%–`r round(ais_prevalence$Upper_CI * 100, 1)`%).
+
+The prevalence of a high likelihood of sleep-disordered breathing according to the BSS was **`r round(bss_prevalence$Prevalence * 100, 1)`%** (`r bss_prevalence$Disturbed` of `r bss_prevalence$Available_N` participants; 95% CI: `r round(bss_prevalence$Lower_CI * 100, 1)`%–`r round(bss_prevalence$Upper_CI * 100, 1)`%).
+
+Among the four instruments, **`r prevalence_results$Instrument[which.max(prevalence_results$Prevalence)]` produced the highest prevalence estimate**, while **`r prevalence_results$Instrument[which.min(prevalence_results$Prevalence)]` produced the lowest prevalence estimate**.
+
+The difference between the highest and lowest prevalence estimates was approximately **`r round((max(prevalence_results$Prevalence) - min(prevalence_results$Prevalence)) * 100, 1)` percentage points**.
+
+## Continuous score results
+
+```{r create-continuous-values, echo=FALSE}
+ess_summary <- continuous_summary %>%
+  filter(Instrument == "ESS")
+
+psqi_summary <- continuous_summary %>%
+  filter(Instrument == "PSQI")
+
+ais_summary <- continuous_summary %>%
+  filter(Instrument == "AIS")
+```
+
+The mean ESS score was **`r ess_summary$Mean`** (SD = `r ess_summary$SD`), with a median of `r ess_summary$Median` and a range from `r ess_summary$Minimum` to `r ess_summary$Maximum`.
+
+The mean PSQI score was **`r psqi_summary$Mean`** (SD = `r psqi_summary$SD`), with a median of `r psqi_summary$Median` and a range from `r psqi_summary$Minimum` to `r psqi_summary$Maximum`.
+
+The mean AIS score was **`r ais_summary$Mean`** (SD = `r ais_summary$SD`), with a median of `r ais_summary$Median` and a range from `r ais_summary$Minimum` to `r ais_summary$Maximum`.
+
+## Interpretation
+
+The prevalence estimates differed across the four instruments. This discrepancy is expected because the instruments measure different aspects of sleep disturbance.
+
+The ESS focuses primarily on excessive daytime sleepiness, whereas the PSQI assesses overall sleep quality. The AIS focuses on symptoms of insomnia, and the BSS assesses the likelihood of sleep-disordered breathing. Therefore, a participant may meet the threshold for sleep disturbance on one instrument but not another.
+These findings indicate that sleep disturbance is common among liver transplant recipients, although the estimated prevalence depends on which aspect of sleep is being measured.
+
+The instrument with the highest prevalence is not necessarily the most accurate. Instead, it may identify a more common type of sleep disturbance in this group of patients. Similarly, an instrument with a lower prevalence may be measuring a more specific type of sleep problem. Therefore since the questionnaires measure different aspects of sleep disturbance differences in prevalence are expected and do not mean that one questionnaire is better or more accurate than another. Instead, they suggest that some types of sleep problems are more common than others in this group of patients.
+
+## Assumptions and Limitations
+
+Several assumptions and limitations should be considered when interpreting these findings.
+
+First, the binary classifications assume that the clinical thresholds appropriately identify sleep disturbance in post-liver transplant recipients. These cutoffs simplify continuous scores into disturbed and non-disturbed categories, which makes prevalence easy to interpret but results in some loss of information.
+
+Second, prevalence was calculated using complete observations separately for each instrument. Consequently, the denominator differs across instruments when missing data are present. Differences in prevalence may therefore reflect both differences in the constructs measured and differences in the participants with available data.
+
+Third, the sleep measures were based on self-reported questionnaires. Self-reported sleep symptoms may be affected by recall error, personal interpretation, or response bias. Therefore these measures do not replace objective clinical assessments.
+
+Fourth, the four instruments measure different aspects of sleep. Therefore, their prevalence estimates should be compared with caution because they do not measure exactly the same condition.
+
+Finally, this analysis is based on observational, cross-sectional data. It estimates the proportion of participants classified as having sleep disturbance at the time of questionnaire completion but cannot establish causal relationships.
+
+## Conclusion
+
+To conclude sleep disturbance was common among the post-liver transplant recipients, although its estimated prevalence varied across the four instruments. The differences indicate that each instrument measures a different aspect of sleep disturbance, which leads to different prevalence estimates
+
+Using several instruments provides a more comprehensive description of sleep health than relying on a single questionnaire. The results should be interpreted alongside the continuous score summaries, missing-data patterns, and the distinct purpose of each instrument.
+
+## Appendix
+
+### Individual exact binomial test outputs
+
+### ESS
+
+```{r ess-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$ESS_disturbance == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$ESS_disturbance
+    )
+  )
+)
+```
+
+### PSQI
+
+```{r psqi-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$PSQI_quality == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$PSQI_quality
+    )
+  )
+)
+```
+
+### AIS
+
+```{r ais-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$AIS_insomnia == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$AIS_insomnia
+    )
+  )
+)
+```
+
+### BSS
+
+```{r bss-binom-test}
+binom.test(
+  x = sum(
+    sleep_data$BSS == 1,
+    na.rm = TRUE
+  ),
+  n = sum(
+    !is.na(
+      sleep_data$BSS
+    )
+  )
+)
+```
+
+# Predictors of Sleep Disturbance
+
+This section of the code addresses the second component of the first research question: "What is the prevalence of subjective sleep disturbance and what are its predictors in post liver transplant recipients?"
+
+Each sleep quality score was modelled using demographic variables (Age,
+Gender, BMI, time elapsed since transplant, liver diagnosis, recurrence
+of disease, evidence of rejection/graft dysfunction, any fibrosis, renal
+failure, depression, and corticosteroid use) as predictors.
+
+## Chosen Models
+
+The four instruments were recorded on different scales so two modeling
+strategies were used depending on the instrument:
+
+1.  **Continuous outcome — multiple linear regression.** PSQI, ESS, and
+    AIS are all instruments that use numeric scores to indicate sleep
+    quality. A multiple linear regression model was used to predict
+    sleep quality while all demographic variables were entered as
+    predictors. The output shows the estimated association of each
+    predictor with sleep score while holding all other predictors
+    constant.
+
+2.  **Binary outcome — multiple logistic regression.** BSS uses a binary
+    scale (1 = disturbance present). Additionally, PSQI, ESS, and AIS
+    measurements were also converted to binary variables, using the
+    clinically accepted thresholds to ensure the analysis is
+    comprehensive. Multiple logistic regression models with the same set
+    of predictors was used for these scales.
+
+## Model Fitting and Comparison
+
+There are 3 linear and 4 logistic models that were fitted on
+`predictor_data`. This cleaned dataset contains all 11 predictors.
+
+The coefficient (or odds ratio for logistic models), 95% confidence
+interval, and p-value per predictor is derived from each model. From
+this, a summary table of p-values across all 7 models is constructed to
+compare which predictors are significant in each model.
+
+------------------------------------------------------------------------
+
+## Missing data check
+
+Using lm() and glm() automatically drops missing values and conducts a
+complete-case analysis by default. Before fitting the models, this
+initial check is to find where missing data occurs. If there was a large
+number of measured variables (ie. age, BMI, depression) that are missing
+for certain outcomes then this would suggest those values are missing
+not at random (NMAR). In this case, the sample isn't representative of
+the population and complete-case analysis would be biased.
+
+```{r missing-data-check}
+
+# sapply() is used to apply the same function across every column in the list 
+# this is used to count how many NA values are in each column
+
+sapply(predictor_data[, c("PSQI", "ESS", "AIS", "PSQI_quality", "ESS_disturbance", "AIS_insomnia", "BSS", "age", "gender", "BMI", "transplant_time", "liver_diagnosis", "recurrence", "graft_dysfunction", "fibrosis", "renal_failure","depression", "corticosteroid")],
+       function(x) sum(is.na(x)))
+
+# Check is PSQI missing data > 30%
+n_total <- nrow(predictor_data)
+
+psqi_missing_pct <- sum(is.na(predictor_data$PSQI)) / n_total * 100
+round(psqi_missing_pct, 1)
+
+psqi_missing_pct
+
+```
+
+**Findings**: The table shows that there are no missing values for any
+of the predictors which suggests that complete-case analysis is
+appropriate to use. However, there are missing values for the outcome
+variables (PSQI:80;ESS:15;AIS:5; BSS:6).
+
+## Linear Regression Models (continuous variables)
+
+All 11 predictors are entered simultaneously in each model. Each
+coefficient represents the effect of that predictor while holding the
+others constant.
+
+```{r linear-models}
+# lm() fits a multiple linear regression model. 
+
+lm_PSQI <- lm(PSQI ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+lm_ESS <- lm(ESS ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+lm_AIS <- lm(AIS ~ age + gender + BMI + transplant_time + liver_diagnosis +
+recurrence + graft_dysfunction + fibrosis + renal_failure + depression + 
+corticosteroid, data = predictor_data)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(lm_PSQI)
+summary(lm_ESS)
+summary(lm_AIS)
+
+# 95% confidence intervals for the linear regression model coefficients, 
+# rounded to 2 decimal places. 
+round(confint(lm_PSQI), 2)
+round(confint(lm_ESS), 2)
+round(confint(lm_AIS), 2)
+
+```
+
+## Diagnostics and Multiple Comparisons
+
+The assumptions of linear regression models are based on equal variance
+of residuals, normality of residuals and linearity. These conditions
+must be met to ensure that the model's predictions are accurate.
+Diagnostic plots were used to evaluate if these assumptions have been
+met. The models were also checked for multicollinearity using the
+variance inflation factor (VIF). The multicollinearity check confirms
+the assumption that none of the predictors in the models are correlated
+with each other.
+
+```{r linear-diagnostics}
+# Residual diagnostic plots 
+par(mfrow = c(2, 2))
+plot(lm_PSQI, main = "PSQI") 
+plot(lm_ESS,  main = "ESS")
+plot(lm_AIS,  main = "AIS")
+par(mfrow = c(1, 1))
+
+# Multicollinearity check - VIF > 5 (or 10) flags problematic predictors
+vif(lm_PSQI)
+vif(lm_ESS)
+vif(lm_AIS)
+```
+
+**Reasoning:** Using plot on a lm() creates 4 diagnostic plots.
+par(mfrow = c(2, 2)) arranges these plots in a 2x2 grid. The first plot
+checks linearity by ensuring that points are randomly scattered around
+the horizontal line at 0. A curved pattern in this plot would indicate
+that there is a non-linear relationship. The second qq plot checks
+whether residuals are normally distributed by ensuring that points fall
+along a diagonal line. Since the sample size is large (150-260 per
+model), the data is expected to be normally distributed. The third plot
+checks for equal variance of residuals by ensuring that points are
+spread horizontally. The fourth plot checks if there are certain
+observations that disproportionately affect the model.
+
+**Findings:**
+
+*Residual diagnostic plots:* There were no unusual findings in any of
+the plots which confirms that the assumptions of the linear regression
+model have been met (linearity, homoscedasticity, normality).
+
+*Multicollinearity check:* There were no VIF scores above 5, which
+confirms that none of the predictors in the model are correlated with
+each other.
+
+## Logistic Regression Models (Binary Sleep Outcomes)
+
+All 11 predictors are entered simultaneously in each model. Each
+coefficient represents the effect of that predictor while holding the
+others constant.
+
+```{r secondary-analysis}
+
+# glm(..., family = binomial) fits a multiple logistic regression.
+# Coefficients represent the log-odds of success
+# exponentiate = TRUE converts log-odds to odds ratios
+
+glm_PSQI_full <- glm(PSQI_quality ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_ESS_full <- glm(ESS_disturbance ~ age + gender + BMI + transplant_time + liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_AIS_full <- glm(AIS_insomnia ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure +
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+glm_BSS_full <- glm(BSS ~ age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + renal_failure + 
+depression + corticosteroid, data = predictor_data, family = binomial)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(glm_PSQI_full)
+summary(glm_ESS_full)
+summary(glm_AIS_full)
+summary(glm_BSS_full)
+
+# Odds ratios
+
+# For each logistic model, exponentiating the coefficients converts them from 
+# log-odds to odds ratios. Values above 1 indicate higher odds of poor sleep 
+# quality while values below 1 indicate lower odds. 
+round(exp(glm_PSQI_full$coefficients), 2)
+round(exp(glm_ESS_full$coefficients), 2)
+round(exp(glm_AIS_full$coefficients), 2)
+round(exp(glm_BSS_full$coefficients), 2)
+
+# 95% confidence intervals for the odds ratios, rounded to 2 decimal places
+round(exp(confint(glm_PSQI_full)), 2)
+round(exp(confint(glm_ESS_full)), 2)
+round(exp(confint(glm_AIS_full)), 2)
+round(exp(confint(glm_BSS_full)), 2)
+
+```
+
+## Multicollinearity Check
+
+```{r logistic-diagnostics}
+
+# Multicollinearity check for the logistic models 
+vif(glm_PSQI_full)
+vif(glm_ESS_full)
+vif(glm_AIS_full)
+vif(glm_BSS_full)
+```
+
+**Findings:**
+
+*Multicollinearity check:* There were no VIF scores above 5 for any of
+the models, which confirms that none of the predictors in the model are
+correlated with each other.
+
+## Verifying Maximum Predictors
+
+The maximum number of predictors for each model is identified using the
+following formula: p =\< m/15. The following code identifies the number
+of sample size in each linear regression model model, and the class with
+the smallest sample size in each logistic regression model. Then, the
+maximum number of predictors is found by dividing each sample size by 15
+(the generally accepted rule). The final output is displayed as a
+dataframe.
+
+```{r verifying-max-predictors}
+
+#nobs() finds the total number of observations that were used to predict the 
+#output. This identifies the sample size of each linear regression model.
+n_PSQI <- nobs(lm_PSQI)
+n_ESS <- nobs(lm_ESS)
+n_AIS <- nobs(lm_AIS)
+
+#A frequency table is created which contains the number of observations within 
+#each class of the outcome variable. The class with the smallest sample size 
+#is used for this calculation. This is identified using 'min' and assigned to 
+#a new variable. 
+
+m_PSQI_glm <- min(table(predictor_data$PSQI_quality))
+m_ESS_glm  <- min(table(predictor_data$ESS_disturbance))
+m_AIS_glm  <- min(table(predictor_data$AIS_insomnia))
+m_BSS_glm  <- min(table(predictor_data$BSS))
+
+#A data frame is created to clearly display results. The first column includes 
+#the model names. The second column lists the m value of each model and the last 
+#column shows the maximum number of predictors used. 
+
+data.frame(
+  model = c("PSQI_lm", "ESS_lm", "AIS_lm",
+            "PSQI_quality_glm", "ESS_disturbance_glm", "AIS_insomnia_glm", 
+            "BSS_glm"),
+  m = c(n_PSQI, n_ESS, n_AIS, m_PSQI_glm, m_ESS_glm, m_AIS_glm, m_BSS_glm),
+  max_p = floor(c(n_PSQI, n_ESS, n_AIS, m_PSQI_glm, m_ESS_glm, m_AIS_glm, 
+                  m_BSS_glm) / 15)
+)
+```
+
+**Findings:** Based on this table, the current logistic regression
+models exceed the maximum number of predictors that can be used (PSQI: 7
+max predictors; ESS: 4 max predictors; AIS: 7 max predictors; BSS: 5 max
+predictors). For these models, there is an increased risk of overfitting
+and model inaccuracy.
+
+## Secondary analysis with reduced models
+
+Based on the results above, each logistic regression model above exceeds
+the maximum number of predictors that can be included in each model. To
+overcome this issue, reduced models were created by narrowing the number
+of predictors used to avoid exceeding the maximum limit. These
+predictors were chosen using a priori domain knowledge.
+
+```{r logistic-models}
+
+# glm(..., family = binomial) fits a multiple logistic regression.
+# Coefficients represent the log-odds of success
+# exponentiate = TRUE converts log-odds to odds ratios
+
+# The outcome of each model has been encoded as binary based on the clinically verified thresholds during the data processing procedure. 
+
+# PSQI logistic regression with 7 df
+glm_PSQI_reduced <- glm(PSQI_quality ~ depression + corticosteroid + BMI +
+                          transplant_time + renal_failure + age + gender,
+                        family = binomial, data = predictor_data)
+
+# ESS logistic regression with 4 df
+glm_ESS_reduced <- glm(ESS_disturbance ~ depression + corticosteroid + BMI +
+                         transplant_time,
+                       family = binomial, data = predictor_data)
+
+# AIS logistic regression with 7 df
+glm_AIS_reduced <- glm(AIS_insomnia ~ depression + corticosteroid + BMI +
+                         transplant_time + renal_failure + age + gender,
+                       family = binomial, data = predictor_data)
+
+# BSS logistic regression with 5 df 
+glm_BSS_reduced <- glm(BSS ~ depression + corticosteroid + BMI +
+                         transplant_time + age,
+                       family = binomial, data = predictor_data)
+
+# The estimated beta coefficients, p-value and standard error for each model
+summary(glm_PSQI_reduced)
+summary(glm_ESS_reduced)
+summary(glm_AIS_reduced)
+summary(glm_BSS_reduced)
+
+# Odds ratios
+# For each logistic model, exponentiating the coefficients converts them from 
+# log-odds to odds ratios. Values above 1 indicate higher odds of poor sleep 
+# quality while values below 1 indicate lower odds. 
+
+round(exp(glm_PSQI_reduced$coefficients), 2)
+round(exp(glm_ESS_reduced$coefficients), 2)
+round(exp(glm_AIS_reduced$coefficients), 2)
+round(exp(glm_BSS_reduced$coefficients), 2)
+
+# 95% confidence intervals for the odds ratios, rounded to 2 decimal places
+round(exp(confint(glm_PSQI_reduced)), 2)
+round(exp(confint(glm_ESS_reduced)), 2)
+round(exp(confint(glm_AIS_reduced)), 2)
+round(exp(confint(glm_BSS_reduced)), 2)
+
+```
+
+# Comparing Full vs Reduced Logistic Models
+
+```{r compare-logistic-models}
+
+# Likelihood ratio test (LRT) is used to compare full vs reduced logistic models
+# anova() with test = "Chisq" compares the change in deviance between two 
+# nested models. The null hypothesis is that the reduced model fits the data
+# well while the alternative hypothesis is that the reduced model does fit the 
+# data better than the full model. A significant p-value means the full model 
+# fits significantly better. A non-significant p-value supports using the 
+# reduced model.
+
+anova(glm_PSQI_reduced, glm_PSQI_full, test = "Chisq")
+anova(glm_ESS_reduced,  glm_ESS_full,  test = "Chisq")
+anova(glm_AIS_reduced,  glm_AIS_full,  test = "Chisq")
+anova(glm_BSS_reduced,  glm_BSS_full,  test = "Chisq")
+```
+
+**Findings:** The reduced model of PSQI, AIS and BSS fits the data
+better. The full model of ESS fits the data significantly better.
+
+## Comparing Models & Predictors
+
+## Summary Table 1: Reduced model comparison across various sleep quality measurements
+
+A summary table is created to compare each sleep quality measurement and
+the set of predictors that are significantly associated with the outcome
+in each. The reduced logistic regression models are used in this
+comparison. The p-value of each model's coefficient matrix is extracted
+from the summary() output to create this table. For predictors that are
+not present in the reduced model, NA is used in their place to indicate
+they were removed from the model.
+
+```{r comparision-table-1}
+
+# The 4th column of summary(model)$coefficients has the p-values for
+# lm() and glm(). Row 1 (containing the intercept) is dropped since we are
+# only comparing each predictor.
+
+p_PSQI     <- summary(lm_PSQI)$coefficients[-1, 4]
+p_ESS      <- summary(lm_ESS)$coefficients[-1, 4]
+p_AIS      <- summary(lm_AIS)$coefficients[-1, 4]
+p_PSQI_reduced <- summary(glm_PSQI_reduced)$coefficients[-1, 4]
+p_ESS_reduced  <- summary(glm_ESS_reduced)$coefficients[-1, 4]
+p_AIS_reduced  <- summary(glm_AIS_reduced)$coefficients[-1, 4]
+p_BSS_reduced      <- summary(glm_BSS_reduced)$coefficients[-1, 4]
+
+
+# all_predictor is a new variable containing all of the variable names included in the models 
+all_predictors <- unique(c(names(p_PSQI), names(p_ESS), names(p_AIS),
+                            names(p_PSQI_reduced), names(p_ESS_reduced),
+                            names(p_AIS_reduced), names(p_BSS_reduced)))
+
+# Unlike the full models, the reduced models don't all use the same predictors. Because of this, using cbind() would cause an error or mislabel columns. For example, there's no position 5 in p_ESS_bin because a 5th variable wasn't included. In this case, another variable would be substituted in its place and would risk mislabelling.
+
+# Using match() aligns each model's p-values to its corresponding predictor, using a common set of predictor names. If that predictor wasn't included in the model, NA fills that spot. 
+
+pval_matrix_1 <- cbind(
+  PSQI_lm              = p_PSQI[match(all_predictors, names(p_PSQI))],
+  ESS_lm               = p_ESS[match(all_predictors, names(p_ESS))],
+  AIS_lm               = p_AIS[match(all_predictors, names(p_AIS))],
+  PSQI_quality_glm     = p_PSQI_reduced[match(all_predictors, names(p_PSQI_reduced))],
+  ESS_disturbance_glm  = p_ESS_reduced[match(all_predictors, names(p_ESS_reduced))],
+  AIS_insomnia_glm     = p_AIS_reduced[match(all_predictors, names(p_AIS_reduced))],
+  BSS_glm              = p_BSS_reduced[match(all_predictors, names(p_BSS_reduced))]
+)
+
+#Row names of the matrix are assigned using the common set of variable names
+rownames(pval_matrix_1) <- all_predictors
+
+round(pval_matrix_1, 3)
+kable(round(pval_matrix_1, 3), caption = "P-values for each reduced model's predictors across the seven fitted models (reduced models)")
+```
+
+## Summary Table 2: Full model comparision across various sleep quality measurements
+
+A summary table is created to compare each sleep quality measurement and
+the full set of predictors. The p-value of each model's coefficient
+matrix is extracted from the summary() output to create this table. This
+full model table is included as a part of the secondary analysis to
+report all tested predictors with full transparency, ensuring the
+analysis comprehensive. The current results can be compared with the
+reduced table to confirm that the excluded predictors were not
+significant in the model and to compare whether these conclusions are
+robust.
+
+```{r comparison-table-2}
+
+# The 4th column of summary(model)$coefficients has the p-values for
+# lm() and glm(). Row 1 (containing the intercept) is dropped since we are
+# only comparing each predictor.
+
+p_PSQI <- summary(lm_PSQI)$coefficients[-1, 4]
+p_ESS  <- summary(lm_ESS)$coefficients[-1, 4]
+p_AIS  <- summary(lm_AIS)$coefficients[-1, 4]
+p_PSQI_full <- summary(glm_PSQI_full)$coefficients[-1, 4]
+p_ESS_full  <- summary(glm_ESS_full)$coefficients[-1, 4]
+p_AIS_full  <- summary(glm_AIS_full)$coefficients[-1, 4]
+p_BSS_full     <- summary(glm_BSS_full)$coefficients[-1, 4]
+
+# All 7 models use the same 11 predictors and the coefficient names 
+# are the same in every model. cbind() combines the columns with the p-value
+# for each matrix. Each row represents the predictor and each column 
+# represents the model that was used.
+pval_matrix_2 <- cbind(
+  PSQI_lm = p_PSQI,
+  ESS_lm = p_ESS,
+  AIS_lm = p_AIS,
+  PSQI_quality_glm = p_PSQI_full,
+  ESS_disturbance_glm = p_ESS_full,
+  AIS_insomnia_glm = p_AIS_full,
+  BSS_glm = p_BSS_full
+)
+
+round(pval_matrix_2, 3)
+kable(round(pval_matrix_2, 3), caption = "P-values for each full model's predictors across the seven fitted models (complete models)")
+```
+
+## Significance flag table
+
+A summary table is created with asterisks flagging predictors that are
+significantly associated (p \< 0.05) with sleep quality for quick visual
+scanning.
+
+```{r significance-flags}
+sig_matrix <- ifelse(pval_matrix_1 < 0.05, "*", "")
+kable(sig_matrix, caption = "Significance flags (p < 0.05) by predictor and model")
+```
+
+## Consistently significant predictors across models
+
+The following table shows the number of models where each predictor is
+significant in comparison to the total number of models that were
+tested. This identifies predictors that are more consistently associated
+with sleep quality across different sleep quality measurement scales.
+
+```{r consistency-summary}
+
+# apply(..., 1, sum) goes row by row (i.e. predictor by predictor) and
+# counts how many of the 7 models have a significant p-value (p < 0.05) for that 
+# row.
+n_sig_models <- apply(pval_matrix_1 < 0.05, 1, sum, na.rm = TRUE)
+n_tested_models <- apply(!is.na(pval_matrix_1), 1, sum)
+
+consistency_summary <- data.frame(
+  Predictor          = rownames(pval_matrix_1),
+  Models_significant = n_sig_models,
+  Models_tested       = n_tested_models
+)
+
+# This sorts the table so the most consistently significant predictors appear first.
+consistency_summary <- consistency_summary[order(-consistency_summary$Models_significant), ]
+
+kable(consistency_summary, row.names = FALSE,
+      caption = "Number of models in which each predictor is significant (p < 0.05), 
+      out of models where it was tested")
+```
+
+# Relationship between Sleep Disturbance and HRQoL
+QUESTION 2 - What is the impact and relationship of sleep disturbance with health related quality of life in these patients?
+
+
+## Part A: Testing Correlation (spearman & pearson) on sleep measure and QoL pairs
+
+PSQI, ESS and AIS are continuous, as are SF36_PCS and SF36_MCS, so Pearson correlation can be tested because it assumes a linear relationship and is sensitive to outliers, so Spearman's rho is reported alongside it as a sensitivity check. BSS is binary and is therefore handled separately in Part B.
+
+*Interpretation: *
+All six correlations are negative and highly significant (all p < 0.05). Since higher PSQI/ESS/AIS = worse sleep and higher PCS/MCS = better QoL, this means worse sleep is consistently associated with worse quality of life.
+
+AIS and PSQI relate more strongly to MCS (mental) than PCS (physical). For instance, AIS r = ‑0.523 with MCS vs ‑0.41 with PCS, could be that insomnia/poor sleep quality and mental health are more associated than physical functioning.
+
+Pearson and Spearman values are nearly identical everywhere, which tells us that the relationships are close to linear, hence model using linear regression.
+
+*note:* 2 sets of linear regression models were fit:
+
+1) **(PARTS C-F)** Where PSQI, ESS and AIS were not converted to binary variable and kept as continuous measurements for the correlation tests and for the linear regression models. The BSS is a binary variable and used as such in the linear regression models.
+
+2) **(PARTS G-H)** Where PSQI, ESS and AIS were converted to binary variables using the clinical cutoffs for the linear regression models. Additionally, the  cutoff versions of PSQI, ESS and AIS were also used in Part B to compare mean QoL scores between "disturbed" vs. "not disturbed" groups using t-test and Wilcoxon rank-sum tests.
+
+*note:* The correlations in Part A and B were calculated based on an available case because each correlation only needs that one pair complete (one sleep variable + one QoL variable). Parts C-F operate on a complete cases
+
+```{r q2-correlation-tests}
+
+# function to run both Pearson and Spearman tests for one pair of
+# variables and return a one-row summary
+cor_summary <- function(x, y, xname, yname, data) {
+  pear <- cor.test(data[[x]], data[[y]], method = "pearson")
+  spear <- cor.test(data[[x]], data[[y]], method = "spearman")
+  data.frame(
+    Sleep_Measure = xname,
+    QoL_Outcome = yname,
+    Pearson_r = round(unname(pear$estimate), 3),
+    Pearson_p_val = formatC(pear$p.value, format = "e", digits = 3),
+    Spearman_rho = round(unname(spear$estimate), 3),
+    Spearman_p_val = formatC(spear$p.value, format = "e", digits = 3)
+  )
+}
+
+sleep_vars <- c("PSQI", "ESS", "AIS")
+qol_vars <- c("SF36_PCS", "SF36_MCS")
+
+# make sure the classes are integer/numeric
+sapply(sleep_data[, c("PSQI","ESS","AIS","SF36_PCS","SF36_MCS")], class)
+
+
+cor_results <- do.call(rbind, lapply(sleep_vars, function(s) {
+  do.call(rbind, lapply(qol_vars, function(q) {
+    cor_summary(s, q, s, q, sleep_data)
+  }))
+}))
+
+kable(cor_results,
+      caption = "Pearson and Spearman correlations between continuous sleep disturbance measures and SF-36 QoL scores")
+```
+
+The scatterplots of the correlations for the 3 sleep instruments and 2 QoL variabless. In each scatterplot we see there is a downward trend, and this visually confirms the correlation calculated in the step above. We see that as sleep-disturbance scores increase, the QoL scores decrease, for all three instruments and both outcomes (mental and physical). Additionally, there's scatter around every line. None of the panels look like a clean, tight line — points are spread widely above and below it. This is expected given r values in the 0.3–0.55 range (moderate, not strong correlations) — sleep disturbance is associated with QoL, but a lot of variation in QoL is coming from other things
+
+```{r q2-scatterplots, warning=FALSE, message=FALSE}
+
+# Scatterplots with fitted regression lines to visualize the relationships
+# tested above
+plot_data <- sleep_data %>%
+  dplyr::select(all_of(sleep_vars), all_of(qol_vars)) %>%
+  pivot_longer(cols = all_of(sleep_vars), names_to = "Sleep_Measure", values_to = "Sleep_Score") %>%
+  pivot_longer(cols = all_of(qol_vars), names_to = "QoL_Outcome", values_to = "QoL_Score")
+
+ggplot(plot_data, aes(x = Sleep_Score, y = QoL_Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  facet_grid(QoL_Outcome ~ Sleep_Measure, scales = "free_x") +
+  theme_bw() +
+  labs(
+    title = "Relationship Between Sleep Disturbance Scores and Quality of Life",
+    x = "Sleep Disturbance Score (higher = worse)",
+    y = "SF-36 Score (higher = better QoL)"
+  )
+```
+
+
+## Part B: QoL by binary sleep disturbance classification
+
+For the clinically-dichotomized measures, including BSS which is binary, we compare mean QoL scores between the "disturbed" and "not disturbed" groups. We check normality of the QoL scores within each group to decide between an independent samples t-test or the Wilcoxon rank-sum test (alternative).
+
+*Interpretation:*
+SF36_PCS: The histogram is left-skewed with a longer tail of low scores with most patients clustering around 40–55. The Q-Q plot follows the red reference line reasonably well through the middle, but curves away at both tails, especially the low end. This is indicates a mild-to-moderate departure from normality, not severe.
+
+SF36_MCS: The histogram is left-skewed, and more skewed than than PCS. Thehe mean (46.2) is below the median (49). The Q-Q plot shows a similar pattern with points on the line in the middle but curve away at the lower tail. Therefore, both QoL scores (MCS and PCS) are not normally distributed.
+
+Since n = 247 for both (larger than n ≥ 30), the t-test is reasonably robust to this degree of non-normality. however, given the visible skew, the Wilcoxon test will be reported alongside the t-test as the non-parametric check.
+
+```{r normality-check, warning=FALSE, message=FALSE}
+
+# Normality check using histograms and Q-Q plots
+# (qqnorm/qqline). t-tests are reasonably robust once n >= 30,
+# so we also report n for each outcome to help judge how much any departure
+# from normality actually matters.
+
+par(mfrow = c(1, 2))
+hist(sleep_data$SF36_PCS, main = "Histogram: SF36_PCS", xlab = "SF36_PCS", breaks = 15)
+qqnorm(sleep_data$SF36_PCS, main = "Q-Q Plot: SF36_PCS")
+qqline(sleep_data$SF36_PCS, col = "red")
+par(mfrow = c(1, 1))
+
+par(mfrow = c(1, 2))
+hist(sleep_data$SF36_MCS, main = "Histogram: SF36_MCS", xlab = "SF36_MCS", breaks = 15)
+qqnorm(sleep_data$SF36_MCS, main = "Q-Q Plot: SF36_MCS")
+qqline(sleep_data$SF36_MCS, col = "red")
+par(mfrow = c(1, 1))
+
+cat("n (non-missing) - PCS:", sum(!is.na(sleep_data$SF36_PCS)),
+    " MCS:", sum(!is.na(sleep_data$SF36_MCS)), "\n")
+```
+
+The function group_compare() takes one binary sleep variable and one QoL outcome, drops missing values for that pair, runs t.test() and wilcox.test(), and also calculatess the mean/SD/n per group. The results show that each comparison is statistically significant (p < 0.05), in both the t-tests and the Wilxocon test. Patients classified as having disturbed sleep on any of the 4 instruments score  lower on both PCS and MCS. The boxplots are included for visual comparison.
+
+*note:* binary cutoffs for PSQI, ESS and AIS were used.
+
+```{r q2-group-comparisons}
+binary_sleep_vars <- c("PSQI_quality", "ESS_disturbance", "AIS_insomnia", "BSS")
+
+group_compare <- function(group_var, outcome_var, data) {
+  form <- as.formula(paste(outcome_var, "~", group_var))
+  df <- data[!is.na(data[[group_var]]) & !is.na(data[[outcome_var]]), ]
+
+  t_res <- t.test(form, data = df)
+  w_res <- wilcox.test(form, data = df)
+
+  means <- df %>%
+    group_by(.data[[group_var]]) %>%
+    summarise(Mean = round(mean(.data[[outcome_var]]), 2),
+              SD = round(sd(.data[[outcome_var]]), 2),
+              N = n(), .groups = "drop")
+
+  data.frame(
+    Sleep_Variable = group_var,
+    QoL_Outcome = outcome_var,
+    Group1 = paste0(means[[group_var]][1], ": ", means$Mean[1], " (SD=", means$SD[1], ", n=", means$N[1], ")"),
+    Group2 = paste0(means[[group_var]][2], ": ", means$Mean[2], " (SD=", means$SD[2], ", n=", means$N[2], ")"),
+      t_test_p = formatC(t_res$p.value, format = "e", digits = 3),
+    wilcoxon_p = formatC(w_res$p.value, format = "e", digits = 3)
+  )
+}
+
+group_results <- do.call(rbind, lapply(binary_sleep_vars, function(s) {
+  do.call(rbind, lapply(qol_vars, function(q) group_compare(s, q, sleep_data)))
+}))
+
+kable(group_results,
+      caption = "Comparison of SF-36 PCS/MCS scores across binary sleep disturbance classifications (t-test and Wilcoxon)")
+```
+
+```{r q2-boxplots, warning=FALSE}
+box_data <- sleep_data %>%
+  dplyr::select(all_of(binary_sleep_vars), all_of(qol_vars)) %>%
+  pivot_longer(cols = all_of(binary_sleep_vars), names_to = "Sleep_Variable", values_to = "Group") %>%
+  pivot_longer(cols = all_of(qol_vars), names_to = "QoL_Outcome", values_to = "Score") %>%
+  filter(!is.na(Group))
+
+ggplot(box_data, aes(x = Group, y = Score, fill = Group)) +
+  geom_boxplot() +
+  facet_grid(QoL_Outcome ~ Sleep_Variable, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
+  labs(title = "SF-36 QoL Scores by Binary Sleep Disturbance Classification",
+       x = NULL, y = "SF-36 Score")
+```
+
+
+## Part C: Multivariable linear regression for PCS (continuous + binary)
+
+*Interpretation:*
+All four sleep instruments are independently, significantly associated with physical QoL, even after controlling for age, BMI, transplant time, recurrence, graft dysfunction, fibrosis, renal failure, depression and corticosteroid use. When holding everything else constant, each 1-unit increase in PSQI is associated with a 0.70-unit decrease in PCS (p<0.001), and this was also seen in ESS (‑0.67/unit, p<0.001) and AIS (‑0.84/unit, p<0.0001). For BSS (binary), having sleep disordered breathing disturbance is associated with a 4.6-unit lower PCS score on average (p=0.008).
+
+AIS stands out as the strongest instrument for physical QoL as both the largest coefficient in relative terms and the highest adjusted R² (0.196 vs. 0.10–0.14 for others). This means insomnia symptoms specifically explain more of the variation in physical functioning than daytime sleepiness (ESS), overall sleep quality (PSQI), or sleep-disordered breathing risk (BSS) do.
+
+Something different from the MCS models is that depression is not a significant covariate in any of the four PCS models (p-value ranges from 0.35 to 0.92). This is different from the MCS models where depression was the dominant covariate. This is likely because depression  affects mental wellbeing more directly than physical functioning. Instead for PCS, BMI is the more consistent covariate as it is significant in three of the four models (p=0.018, 0.007, 0.009), meaning patients with larger BMI are associated with reporting lower physical QoL independent of their sleep status.
+
+Adjusted R^2 is noticeably lower across the board for PCS (0.10–0.20) than it was for MCS (0.17–0.39, and this tells us that sleep disturbance and these covariates together explain less of the variation in physical QoL than in mental QoL.
+
+*limitation:* PSQI is missing in 85 of 268 patients (31.7%). If patients skipped that questionnaire for a reason related to their actual sleep quality (rather than at random), then the PSQI-based models (n=155) could be biased in a way the AIS/ESS models aren't. Therefore, probably best to keep PSQI but talk about it as a limitation to the model.
+
+```{r pcs-regression, warning=FALSE, message=FALSE}
+
+# Missingness in the sleep/QoL outcome variables themselves is NOT pre-filtered.
+# lm() performs listwise deletion automatically, using only the variables in
+# each specific formula. This means each of the 8 models in Parts C and D uses
+# all available patients for a particular sleep instrument + outcome
+# combination.
+sapply(sleep_data[, c("PSQI","ESS","AIS","SF36_PCS","SF36_MCS")],
+       function(x) sum(is.na(x)))
+
+# Covariate set is reduced from the original 11 to 9 -> liver_diagnosis (4
+# dummy levels) and gender were dropped. Both were non-significant across
+# each of the original 8 models, and removing them also helped
+# satisfy the p <= m/15 rule for every model.
+# The full 11-covariate set consumed 15 predictor df once liver_diagnosis's
+# dummies are counted, which exceeded the limit for all 8 models (most
+# severely for PSQI, where n=155 only allows 10 predictors max). 
+covariates_full    <- "age + gender + BMI + transplant_time + 
+liver_diagnosis + recurrence + graft_dysfunction + fibrosis + 
+renal_failure + depression + corticosteroid"
+covariates_reduced <- "age + BMI + transplant_time + recurrence + 
+graft_dysfunction + fibrosis + renal_failure + depression + corticosteroid"
+```
+
+### PCS-PSQI model
+
+```{r pcs-psqi, warning=FALSE, message=FALSE}
+
+pcs_psqi <- lm(as.formula(paste("SF36_PCS ~ PSQI +", covariates_reduced)), 
+               data = predictor_data)
+
+summary(pcs_psqi)
+```
+
+### PCS-ESS
+
+```{r pcs-ess, warning=FALSE, message=FALSE}
+
+pcs_ess  <- lm(as.formula(paste("SF36_PCS ~ ESS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(pcs_ess)
+```
+
+
+### PCS-AIS
+
+```{r pcs-ais, warning=FALSE, message=FALSE}
+
+pcs_ais  <- lm(as.formula(paste("SF36_PCS ~ AIS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(pcs_ais)
+```
+
+### PCS-BSS
+
+```{r pcs-bss, warning=FALSE, message=FALSE}
+
+
+pcs_bss  <- lm(as.formula(paste("SF36_PCS ~ BSS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(pcs_bss)
+```
+
+### R-Squared Compairson for the PCS models
+
+```{r pcs-r-sqaured-comparison}
+# Comparing the adjusted R^2 across the 4 sleep instruments. 
+# Note: AIC not included here for comparison because these 4 models are fit on 
+# different sample sizes and AIC is only valid to compare across models fit on 
+# the same sample size (n).
+pcs_fit_table <- data.frame(
+  Sleep_Measure = c("PSQI", "ESS", "AIS", "BSS"),
+  N = c(nobs(pcs_psqi), nobs(pcs_ess), nobs(pcs_ais), nobs(pcs_bss)),
+  Sleep_Coefficient = c(coef(pcs_psqi)["PSQI"], coef(pcs_ess)["ESS"],
+                        coef(pcs_ais)["AIS"], coef(pcs_bss)["BSSDisturbance"]),
+  
+  P_value = formatC(c(summary(pcs_psqi)$coefficients["PSQI", 4],
+              summary(pcs_ess)$coefficients["ESS", 4],
+              summary(pcs_ais)$coefficients["AIS", 4],
+              summary(pcs_bss)$coefficients["BSSDisturbance", 4]), format = "e", digits = 3),
+  
+  Adj_R2 = c(summary(pcs_psqi)$adj.r.squared, summary(pcs_ess)$adj.r.squared,
+             summary(pcs_ais)$adj.r.squared, summary(pcs_bss)$adj.r.squared))
+
+kable(pcs_fit_table, caption = "Comparison of SF-36 PCS models across sleep instruments (predictor_data, reduced covariates)")
+
+```
+
+
+## Part D: Multivariable linear regression for MCS (continuous + binary)
+
+*Interpretation:*
+PSQI, ESS, and AIS are all independently, significantly associated with MCS. Holding all covariates constant, worse sleep quality/sleepiness/insomnia symptoms are each linked to lower mental QoL. Specificaslly, each 1-unit increase in PSQI is associated with a 1.23-unit decrease in MCS (p<0.0001), and this was also seen for AIS (‑1.10/unit, p<0.0001) and ESS (‑0.65/unit, p=0.00015). BSS is the exception because it was NOT significant once covariates are controlled (p=0.094), even though it showed a significant difference in Part B. This means that BSS's raw association with MCS was partly explained by other factors.
+
+Furthermore, PSQI and AIS explain more of the variance in MCS than ESS or BSS do, with an adjusted R^2 of 0.385 and 0.371 vs. 0.228 and 0.173, respectively. This tells us that PSQI and AIS are the two instruments most strongly tied to mental health-related QoL for this sample.
+
+Moreover, one consistent secondary finding across all four models was that depression was the single strongest, most consistent covariate, as it was larger and more significant than any covariate other than the sleep variable itself.
+
+### MCS-PSQI 
+
+```{r mcs-psqi, warning=FALSE, message=FALSE}
+
+mcs_psqi <- lm(as.formula(paste("SF36_MCS ~ PSQI +", covariates_reduced)), 
+               data = predictor_data)
+
+summary(mcs_psqi)
+```
+
+### MCS-ESS
+
+```{r mcs-ess, warning=FALSE, message=FALSE}
+
+mcs_ess  <- lm(as.formula(paste("SF36_MCS ~ ESS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(mcs_ess)
+```
+
+
+### MCS-AIS
+
+```{r mcs-ais, warning=FALSE, message=FALSE}
+
+mcs_ais  <- lm(as.formula(paste("SF36_MCS ~ AIS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(mcs_ais)
+```
+
+### MCS-BSS
+
+```{r mcs-bss, warning=FALSE, message=FALSE}
+
+mcs_bss  <- lm(as.formula(paste("SF36_MCS ~ BSS +",  covariates_reduced)), 
+               data = predictor_data)
+
+summary(mcs_bss)
+```
+
+### R-Squared Compairson for the MCS models
+
+```{r mcs-r-sqaured-comparison}
+# Comparing the adjusted R^2 across the 4 sleep instruments. 
+# Note: AIC not included here for comparison because these 4 models are fit on 
+# different sample sizes and AIC is only valid to compare across models fit on 
+# the same sample size (n).
+mcs_fit_table <- data.frame(
+  Sleep_Measure = c("PSQI", "ESS", "AIS", "BSS"),
+  N = c(nobs(mcs_psqi), nobs(mcs_ess), nobs(mcs_ais), nobs(mcs_bss)),
+  Sleep_Coefficient = c(coef(mcs_psqi)["PSQI"], coef(mcs_ess)["ESS"],
+                        coef(mcs_ais)["AIS"], coef(mcs_bss)["BSSDisturbance"]),
+  
+  P_value = formatC(c(summary(mcs_psqi)$coefficients["PSQI", 4],
+              summary(mcs_ess)$coefficients["ESS", 4],
+              summary(mcs_ais)$coefficients["AIS", 4],
+              summary(mcs_bss)$coefficients["BSSDisturbance", 4]), format = "e", digits = 3),
+  
+  Adj_R2 = c(summary(mcs_psqi)$adj.r.squared, summary(mcs_ess)$adj.r.squared,
+             summary(mcs_ais)$adj.r.squared, summary(mcs_bss)$adj.r.squared)
+)
+kable(mcs_fit_table, caption = "Comparison of SF-36 MCS models across sleep instruments (predictor_data, reduced covariates)")
+
+```
+
+## Part E: Verify predictor count rule and diagnostics for all 8 modls
+
+```{r verify-rule}
+# Check p <= m/15 for every model
+check_model <- function(outcome, sleepvar, data, covars) {
+  f <- as.formula(paste(outcome, "~", sleepvar, "+", covars))
+  m <- lm(f, data = data)
+  n <- nobs(m); p <- length(coef(m)) - 1
+  data.frame(Outcome = outcome, Sleep_Var = sleepvar, N = n,
+             Predictors_used = p, Max_allowed = floor(n / 15),
+             OK = p <= floor(n / 15))
+}
+
+predictor_check <- do.call(rbind, lapply(c("SF36_PCS", "SF36_MCS"), function(o) {
+  do.call(rbind, lapply(c("PSQI","ESS","AIS","BSS"),
+                         function(s) check_model(o, s, predictor_data, covariates_reduced)))
+}))
+
+kable(predictor_check, caption = "Predictor-count check (p <= m/15 rule) for all Q2 regression models")
+
+```
+
+### Checking Variance Inflation Factor of all 8 models
+
+```{r models-vif}
+library(car)
+
+# VIF of the 8 models built in Parts C and D collected into a list here so 
+# function runs for each one without repeating code.
+all_models <- list(
+  pcs_psqi = pcs_psqi, pcs_ess = pcs_ess, pcs_ais = pcs_ais, pcs_bss = pcs_bss,
+  mcs_psqi = mcs_psqi, mcs_ess = mcs_ess, mcs_ais = mcs_ais, mcs_bss = mcs_bss
+)
+
+# VIF for all 8 models.
+for (model_name in names(all_models)) {
+  cat("\n=== VIF:", model_name, "===\n")
+  print(vif(all_models[[model_name]]))
+}
+
+# Rule of thumb: VIF > 5 (sometimes >10) signals problematic multicollinearity
+
+# Residual diagnostic plots for all 8 models.
+for (model_name in names(all_models)) {
+  par(mfrow = c(2, 2))
+  plot(all_models[[model_name]], main = model_name)
+  mtext(model_name, side = 3, line = -1.5, outer = TRUE)
+  par(mfrow = c(1, 1))
+}
+
+# Residual histograms for all 8 models.
+par(mfrow = c(2, 4))
+for (model_name in names(all_models)) {
+  hist(resid(all_models[[model_name]]), main = model_name, xlab = "Residuals")
+}
+par(mfrow = c(1, 1))
+
+```
+
+## Part F: Stepwise selection
+
+*Interpretation:*
+In both stepwise models, PSQI stays in, with almost the same coefficient and significance as the full model (PCS: ‑0.696 full vs ‑0.606 stepwise; MCS: ‑1.230 full vs ‑1.213 stepwise). This means that the sleep-QoL relationship isn't an artifact that only shows up when you control for a big bundle of covariates, instead it's robust to which covariates are included.
+
+Additionally, this tells us which covariates are pulling their weight. Out of 9 covariates, only BMI, recurrence and corticosteroid survived for PCS, and only age and depression survived for MCS. All the other variables (transplant_time, graft_dysfunction, fibrosis, renal_failure) got dropped as not contributing enough to justify the extra parameter. Notably depression is the dominant confounder for MCS (larger effect than age, and highly significant)
+
+*note:* corticosteroid stayed in the PCS stepwise model even though its own p-value (0.127) isn't significant, and this is because it optimizes overall prediction fit, not each coefficient's individual significance. This stepwise result is just a supporting robustness check to the models above.
+
+```{r step-aic-check}
+library(MASS)
+
+# stepAIC requires the sample size to stay fixed across each candidate
+# model it compares. Because dropping a predictor can "recover" rows that
+# were only missing on that variable, this explicitly builds a complete-case
+# subset over all variables in the formula before fitting and avoids the
+# "number of rows in use has changed" error allowing us to compare AIC.
+
+pcs_vars <- all.vars(formula(pcs_psqi))
+cc_pcs <- predictor_data[complete.cases(predictor_data[, pcs_vars]), ]
+pcs_psqi_cc <- lm(formula(pcs_psqi), data = cc_pcs)
+pcs_psqi_step <- stepAIC(pcs_psqi_cc, direction = "backward", trace = FALSE)
+summary(pcs_psqi_step)
+
+mcs_vars <- all.vars(formula(mcs_psqi))
+cc_mcs <- predictor_data[complete.cases(predictor_data[, mcs_vars]), ]
+mcs_psqi_cc <- lm(formula(mcs_psqi), data = cc_mcs)
+mcs_psqi_step <- stepAIC(mcs_psqi_cc, direction = "backward", trace = FALSE)
+summary(mcs_psqi_step)
+
+```
+
+## Part G: Multivariable linear regression for PCS (binary only)
+
+Using the clinical cutoffs of PSQI, ESS and AIS answers "does having poor sleep quality (yes/no) predict worse QoL?". This lets us compare whether the relationship holds at the level of severity, or just presence/absence of disturbance.
+
+### PCS-PSQI 
+
+```{r pcs-psqi-binary, warning=FALSE, message=FALSE}
+
+pcs_psqi_bin <- lm(as.formula(paste("SF36_PCS ~ PSQI_quality +", covariates_reduced)),
+                    data = predictor_data)
+summary(pcs_psqi_bin)
+```
+
+### PCS-ESS
+
+```{r pcs-ess-binary, warning=FALSE, message=FALSE}
+
+pcs_ess_bin <- lm(as.formula(paste("SF36_PCS ~ ESS_disturbance +", covariates_reduced)),
+                   data = predictor_data)
+summary(pcs_ess_bin)
+```
+
+
+### PCS-AIS
+
+```{r pcs-ais-binary, warning=FALSE, message=FALSE}
+
+pcs_ais_bin <- lm(as.formula(paste("SF36_PCS ~ AIS_insomnia +", covariates_reduced)),
+                   data = predictor_data)
+summary(pcs_ais_bin)
+```
+
+
+## Part H: Multivariable linear regression for MCS (binary only)
+
+### MCS-PSQI 
+
+```{r mcs-psqi-binary, warning=FALSE, message=FALSE}
+
+mcs_psqi_bin <- lm(as.formula(paste("SF36_MCS ~ PSQI_quality +", covariates_reduced)),
+                    data = predictor_data)
+summary(mcs_psqi_bin)
+```
+
+### MCS-ESS
+
+```{r mcs-ess-binary, warning=FALSE, message=FALSE}
+
+mcs_ess_bin <- lm(as.formula(paste("SF36_MCS ~ ESS_disturbance +", covariates_reduced)),
+                   data = predictor_data)
+summary(mcs_ess_bin)
+```
+
+
+### MCS-AIS
+
+```{r mcs-ais-binary, warning=FALSE, message=FALSE}
+
+mcs_ais_bin <- lm(as.formula(paste("SF36_MCS ~ AIS_insomnia +", covariates_reduced)),
+                   data = predictor_data)
+summary(mcs_ais_bin)
+```
+
+## Part I: Checking Variance Inflation Factor of all 6 models
+
+As with the continuous+predictor models in Parts C and D, diagnostic plots and VIF values are checked for the binary-predictor models to confirm that the linear regression assumptions (linearity, normality of residuals, homoscedasticity) still hold, and that none of the covariates are problematically collinear, when the sleep variable is dichotomized instead of continuous.
+
+```{r vif-binary}
+
+# Diagnostic plots (residuals vs fitted, Q-Q, scale-location, residuals vs
+# leverage) and VIF checks for the binary-predictor models, to confirm the
+# same regression assumptions hold as in the continuous-predictor models.
+
+# Create the 4 diagnostic plots and return the VIF
+# values for one fitted lm() model.
+run_diagnostics <- function(model, label) {
+  par(mfrow = c(2, 2))
+  plot(model, main = label)
+  par(mfrow = c(1, 1))
+
+  vif(model)
+}
+
+# Named list of the 6 binary-predictor models, so the function can be
+# applied to each one.
+binary_models <- list(
+  "PCS ~ PSQI_quality"     = pcs_psqi_bin,
+  "PCS ~ ESS_disturbance"  = pcs_ess_bin,
+  "PCS ~ AIS_insomnia"     = pcs_ais_bin,
+  "MCS ~ PSQI_quality"     = mcs_psqi_bin,
+  "MCS ~ ESS_disturbance"  = mcs_ess_bin,
+  "MCS ~ AIS_insomnia"     = mcs_ais_bin
+)
+
+# producing the diagnostic plots and each model's VIF output.
+vif_results <- lapply(names(binary_models), function(m) {
+  run_diagnostics(binary_models[[m]], m)
+})
+
+names(vif_results) <- names(binary_models)
+vif_results
+```
+
+
+## Part J: Combined Summary Table of All Linear Regression Models (LOOK AT THIS)
+
+A combined summary table was constructed to compare the adjusted association between each sleep measure ((PSQI, ESS, AIS, BSS) continuous and binary versions) and each QoL outcome (PCS or MCS). The beta coefficient, 95% confidence interval and p-value for the sleep-measure term are extracted from each of the 14 models (8 continuous + 6 binary, across both PCS and MCS), allowing direct comparison of the strength and significance of the continuous vs. dichotomized versions of the same instrument.
+
+```{r summary-all}
+
+# Extract the coefficient, 95% CI, and p-value for the
+# sleep-measure term from a fitted lm() model. Row 1 of the coefficient
+# table is always the intercept, so row 2 is the sleep predictor since it
+# is entered first in each model's formula.
+extract_sleep_effect <- function(model, term_name) {
+  coefs <- summary(model)$coefficients
+  ci <- confint(model)
+  data.frame(
+    Term = term_name,
+    Estimate = round(coefs[2, 1], 2),
+    CI_lower = round(ci[2, 1], 2),
+    CI_upper = round(ci[2, 2], 2),
+   p_value = formatC(coefs[2, 4], format = "e", digits = 2)
+  )
+}
+
+# Building the summary table.
+rq2_summary_full <- rbind(
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_psqi, "PSQI (continuous)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_ess,  "ESS (continuous)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_ais,  "AIS (continuous)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_bss,  "BSS (Disturbance vs No disturbance)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_psqi_bin, "PSQI_quality (Poor vs Adequate)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_ess_bin,  "ESS_disturbance (Yes vs No)")),
+  cbind(Outcome = "SF36_PCS", extract_sleep_effect(pcs_ais_bin,  "AIS_insomnia (Yes vs No)")),
+
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_psqi, "PSQI (continuous)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_ess,  "ESS (continuous)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_ais,  "AIS (continuous)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_bss,  "BSS (Disturbance vs No disturbance)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_psqi_bin, "PSQI_quality (Poor vs Adequate)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_ess_bin,  "ESS_disturbance (Yes vs No)")),
+  cbind(Outcome = "SF36_MCS", extract_sleep_effect(mcs_ais_bin,  "AIS_insomnia (Yes vs No)"))
+)
+
+kable(rq2_summary_full, row.names = FALSE,
+      caption = "Adjusted association between each sleep measure (continuous and binary) and QoL outcome")
+
+
+```
+
+
+
