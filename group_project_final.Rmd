@@ -342,7 +342,7 @@ The prevalence estimates were compared using a bar graph with 95% confidence int
 
 ## Prevalence Analysis
 
-### Check the coding of binary variables
+### Frequency Overview
 
 Before calculating prevalence, the frequency of each binary outcome was examined.
 
@@ -382,7 +382,7 @@ The binary variables should contain:
 - `1` for sleep disturbance;
 - `NA` for missing information.
 
-## Function for prevalence and confidence intervals
+## Function for Prevalence and Confidence Intervals
 
 ```{r prevalence-function, echo=FALSE}
 
@@ -416,7 +416,7 @@ calculate_prevalence <- function(variable, instrument_name, disturbance_level = 
 }
 ```
 
-## Calculate prevalence for all four instruments
+## Calculate Prevalence for all Four Instruments
 
 ```{r calculate-prevalence, echo=FALSE}
 ess_prevalence <- calculate_prevalence(
@@ -449,7 +449,7 @@ prevalence_results <- bind_rows(
 prevalence_results
 ```
 
-## Format the prevalence table
+## Formatted Prevalence Table
 
 ```{r prevalence-table, echo=FALSE}
 prevalence_table <- prevalence_results %>%
@@ -490,7 +490,7 @@ kable(
 
 BSS was not included in the continuous summary because it is a binary measure in this dataset.
 
-### Convert the continuous scores into long format
+### Continuous Score Conversion
 
 ```{r continuous-data, echo=FALSE}
 continuous_sleep_data <- sleep_data %>%
@@ -506,7 +506,7 @@ continuous_sleep_data <- sleep_data %>%
   )
 ```
 
-### Calculate descriptive statistics
+### Descriptive Statistics
 
 ```{r continuous-summary,echo=FALSE}
 continuous_summary <- continuous_sleep_data %>%
@@ -539,7 +539,7 @@ kable(
 
 ## Figures
 
-### Prevalence bar graph
+### Prevalence Bar Graph
 
 ```{r prevalence-graph,echo=FALSE,fig.cap="Figure 1. Prevalence of sleep disturbance according to the ESS, PSQI, AIS, and BSS. Error bars represent exact 95% binomial confidence intervals."}
 prevalence_graph <- prevalence_results %>%
@@ -601,7 +601,7 @@ ggplot(
   )
 ```
 
-### Distribution of continuous sleep scores
+### Distribution of Continuous Sleep Scores
 
 ```{r continuous-histograms,echo=FALSE,fig.width=9, fig.height=6, fig.cap="Figure 2. Distributions of ESS, PSQI, and AIS continuous scores."}
 ggplot(
@@ -632,7 +632,7 @@ ggplot(
 
 ## Results
 
-### Prevalence estimates
+### Prevalence Estimates
 
 The prevalence of excessive daytime sleepiness according to the ESS was **`r round(ess_prevalence$Prevalence * 100, 1)`%** (`r ess_prevalence$Disturbed` of `r ess_prevalence$Available_N` participants; 95% CI: `r round(ess_prevalence$Lower_CI * 100, 1)`%–`r round(ess_prevalence$Upper_CI * 100, 1)`%).
 
@@ -646,7 +646,7 @@ Among the four instruments, **`r prevalence_results$Instrument[which.max(prevale
 
 The difference between the highest and lowest prevalence estimates was approximately **`r round((max(prevalence_results$Prevalence) - min(prevalence_results$Prevalence)) * 100, 1)` percentage points**.
 
-## Continuous score results
+## Continuous Score Results
 
 ```{r create-continuous-values, echo=FALSE}
 ess_summary <- continuous_summary %>%
@@ -803,11 +803,11 @@ compare which predictors are significant in each model.
 
 ------------------------------------------------------------------------
 
-## Missing data check
+## Data Completeness Validation
 
 Using lm() and glm() automatically drops missing values and conducts a
 complete-case analysis by default. Before fitting the models, this
-initial check is to find where missing data occurs. If there was a large
+check confirms the original data cleaning for missingness. If there was a large
 number of measured variables (ie. age, BMI, depression) that are missing
 for certain outcomes then this would suggest those values are missing
 not at random (NMAR). In this case, the sample isn't representative of
@@ -836,7 +836,7 @@ of the predictors which suggests that complete-case analysis is
 appropriate to use. However, there are missing values for the outcome
 variables (PSQI:80;ESS:15;AIS:5; BSS:6).
 
-## Linear Regression Models (continuous variables)
+## Linear Regression Models (Continuous Variables)
 
 All 11 predictors are entered simultaneously in each model. Each
 coefficient represents the effect of that predictor while holding the
@@ -1033,7 +1033,7 @@ max predictors; ESS: 4 max predictors; AIS: 7 max predictors; BSS: 5 max
 predictors). For these models, there is an increased risk of overfitting
 and model inaccuracy.
 
-## Secondary analysis with reduced models
+## Secondary Analysis with Reduced Models
 
 Based on the results above, each logistic regression model above exceeds
 the maximum number of predictors that can be included in each model. To
@@ -1211,7 +1211,7 @@ round(pval_matrix_2, 3)
 kable(round(pval_matrix_2, 3), caption = "P-values for each full model's predictors across the seven fitted models (complete models)")
 ```
 
-## Significance flag table
+## Significance Flag Table
 
 A summary table is created with asterisks flagging predictors that are
 significantly associated (p \< 0.05) with sleep quality for quick visual
@@ -1222,7 +1222,7 @@ sig_matrix <- ifelse(pval_matrix_1 < 0.05, "*", "")
 kable(sig_matrix, caption = "Significance flags (p < 0.05) by predictor and model")
 ```
 
-## Consistently significant predictors across models
+## Consistently Significant Predictors across Models
 
 The following table shows the number of models where each predictor is
 significant in comparison to the total number of models that were
@@ -1255,7 +1255,7 @@ kable(consistency_summary, row.names = FALSE,
 QUESTION 2 - What is the impact and relationship of sleep disturbance with health related quality of life in these patients?
 
 
-## Part A: Testing Correlation (spearman & pearson) on sleep measure and QoL pairs
+## Part A: Testing Correlation (Spearman & Pearson) on Sleep Measure and QoL Pairs
 
 PSQI, ESS and AIS are continuous, as are SF36_PCS and SF36_MCS, so Pearson correlation can be tested because it assumes a linear relationship and is sensitive to outliers, so Spearman's rho is reported alongside it as a sensitivity check. BSS is binary and is therefore handled separately in Part B.
 
@@ -1332,7 +1332,7 @@ ggplot(plot_data, aes(x = Sleep_Score, y = QoL_Score)) +
 ```
 
 
-## Part B: QoL by binary sleep disturbance classification
+## Part B: QoL by Binary Sleep Disturbance Classification
 
 For the clinically-dichotomized measures, including BSS which is binary, we compare mean QoL scores between the "disturbed" and "not disturbed" groups. We check normality of the QoL scores within each group to decide between an independent samples t-test or the Wilcoxon rank-sum test (alternative).
 
@@ -1421,7 +1421,7 @@ ggplot(box_data, aes(x = Group, y = Score, fill = Group)) +
 ```
 
 
-## Part C: Multivariable linear regression for PCS (continuous + binary)
+## Part C: Multivariable Linear Regression for PCS (Continuous & Binary)
 
 *Interpretation:*
 All four sleep instruments are independently, significantly associated with physical QoL, even after controlling for age, BMI, transplant time, recurrence, graft dysfunction, fibrosis, renal failure, depression and corticosteroid use. When holding everything else constant, each 1-unit increase in PSQI is associated with a 0.70-unit decrease in PCS (p<0.001), and this was also seen in ESS (‑0.67/unit, p<0.001) and AIS (‑0.84/unit, p<0.0001). For BSS (binary), having sleep disordered breathing disturbance is associated with a 4.6-unit lower PCS score on average (p=0.008).
@@ -1500,7 +1500,7 @@ pcs_bss  <- lm(as.formula(paste("SF36_PCS ~ BSS +",  covariates_reduced)),
 summary(pcs_bss)
 ```
 
-### R-Squared Compairson for the PCS models
+### R-Squared Comparison for the PCS models
 
 ```{r pcs-r-sqaured-comparison}
 # Comparing the adjusted R^2 across the 4 sleep instruments. 
@@ -1526,7 +1526,7 @@ kable(pcs_fit_table, caption = "Comparison of SF-36 PCS models across sleep inst
 ```
 
 
-## Part D: Multivariable linear regression for MCS (continuous + binary)
+## Part D: Multivariable Linear Regression for MCS (Continuous & Binary)
 
 *Interpretation:*
 PSQI, ESS, and AIS are all independently, significantly associated with MCS. Holding all covariates constant, worse sleep quality/sleepiness/insomnia symptoms are each linked to lower mental QoL. Specificaslly, each 1-unit increase in PSQI is associated with a 1.23-unit decrease in MCS (p<0.0001), and this was also seen for AIS (‑1.10/unit, p<0.0001) and ESS (‑0.65/unit, p=0.00015). BSS is the exception because it was NOT significant once covariates are controlled (p=0.094), even though it showed a significant difference in Part B. This means that BSS's raw association with MCS was partly explained by other factors.
@@ -1576,7 +1576,7 @@ mcs_bss  <- lm(as.formula(paste("SF36_MCS ~ BSS +",  covariates_reduced)),
 summary(mcs_bss)
 ```
 
-### R-Squared Compairson for the MCS models
+### R-Squared Comparison for the MCS Models
 
 ```{r mcs-r-sqaured-comparison}
 # Comparing the adjusted R^2 across the 4 sleep instruments. 
@@ -1601,7 +1601,7 @@ kable(mcs_fit_table, caption = "Comparison of SF-36 MCS models across sleep inst
 
 ```
 
-## Part E: Verify predictor count rule and diagnostics for all 8 modls
+## Part E: Verify Predictor Count Rule and Diagnostics for all Models
 
 ```{r verify-rule}
 # Check p <= m/15 for every model
@@ -1660,7 +1660,7 @@ par(mfrow = c(1, 1))
 
 ```
 
-## Part F: Stepwise selection
+## Part F: Stepwise Selection
 
 *Interpretation:*
 In both stepwise models, PSQI stays in, with almost the same coefficient and significance as the full model (PCS: ‑0.696 full vs ‑0.606 stepwise; MCS: ‑1.230 full vs ‑1.213 stepwise). This means that the sleep-QoL relationship isn't an artifact that only shows up when you control for a big bundle of covariates, instead it's robust to which covariates are included.
@@ -1692,7 +1692,7 @@ summary(mcs_psqi_step)
 
 ```
 
-## Part G: Multivariable linear regression for PCS (binary only)
+## Part G: Multivariable Linear Regression for PCS (binary only)
 
 Using the clinical cutoffs of PSQI, ESS and AIS answers "does having poor sleep quality (yes/no) predict worse QoL?". This lets us compare whether the relationship holds at the level of severity, or just presence/absence of disturbance.
 
@@ -1725,7 +1725,7 @@ summary(pcs_ais_bin)
 ```
 
 
-## Part H: Multivariable linear regression for MCS (binary only)
+## Part H: Multivariable Linear Regression for MCS (Binary Only)
 
 ### MCS-PSQI 
 
@@ -1755,7 +1755,7 @@ mcs_ais_bin <- lm(as.formula(paste("SF36_MCS ~ AIS_insomnia +", covariates_reduc
 summary(mcs_ais_bin)
 ```
 
-## Part I: Checking Variance Inflation Factor of all 6 models
+## Part I: Checking Variance Inflation Factor of all 6 Models
 
 As with the continuous+predictor models in Parts C and D, diagnostic plots and VIF values are checked for the binary-predictor models to confirm that the linear regression assumptions (linearity, normality of residuals, homoscedasticity) still hold, and that none of the covariates are problematically collinear, when the sleep variable is dichotomized instead of continuous.
 
@@ -1796,7 +1796,7 @@ vif_results
 ```
 
 
-## Part J: Combined Summary Table of All Linear Regression Models (LOOK AT THIS)
+## Part J: Combined Summary Table of All Linear Regression Models
 
 A combined summary table was constructed to compare the adjusted association between each sleep measure ((PSQI, ESS, AIS, BSS) continuous and binary versions) and each QoL outcome (PCS or MCS). The beta coefficient, 95% confidence interval and p-value for the sleep-measure term are extracted from each of the 14 models (8 continuous + 6 binary, across both PCS and MCS), allowing direct comparison of the strength and significance of the continuous vs. dichotomized versions of the same instrument.
 
